@@ -180,6 +180,6 @@ public sealed partial class DashboardPage : Page
 
     private void OpenPerformance_Click(object sender, RoutedEventArgs e)
     {
-        Frame.Navigate(typeof(PerformancePage));
+        App.MainWindow?.NavigateTo("performance");
     }
 }

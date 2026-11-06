@@ -29,6 +29,7 @@
                         PaneDisplayMode="LeftCompact"
                         OpenPaneLength="184"
                         CompactPaneLength="52"
+                        BackRequested="Navigation_BackRequested"
                         SelectionChanged="Navigation_SelectionChanged">
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="概览" Tag="dashboard" Icon="Home" />
@@ -45,7 +46,7 @@
             <NavigationView.FooterMenuItems>
                 <NavigationViewItem Content="设置" Tag="settings" Icon="Setting" />
             </NavigationView.FooterMenuItems>
-            <Frame x:Name="ContentFrame" />
+            <Frame x:Name="ContentFrame" Navigated="ContentFrame_Navigated" />
         </NavigationView>
     </Grid>
 </Window>

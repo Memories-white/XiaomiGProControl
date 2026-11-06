@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using System.Runtime.InteropServices;
+using Microsoft.UI.Xaml.Navigation;
 
 namespace GProControl;
 
@@ -13,6 +14,7 @@ public sealed partial class MainWindow : Window
     private TrayIconService? _tray;
     private bool _exiting;
     private bool _closePromptRunning;
+    private bool _syncingNavigation;
     private readonly Dictionary<string, Type> _pages = new()
     {
         ["dashboard"] = typeof(DashboardPage),
@@ -34,7 +36,6 @@ public sealed partial class MainWindow : Window
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1180, 760));
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "GProControl.ico"));
         Navigation.SelectedItem = Navigation.MenuItems[0];
-        ContentFrame.Navigate(typeof(DashboardPage));
         AppWindow.Closing += OnClosing;
         Closed += (_, _) => _tray?.Dispose();
         StartupDiagnostics.Write("MainWindow initialization completed.");
@@ -158,6 +159,31 @@ public sealed partial class MainWindow : Window
         var restored = IsWindowVisible(handle);
         StartupDiagnostics.Write($"Background lifecycle smoke: hidden={hidden}; restored={restored}");
         if (Environment.GetCommandLineArgs().Contains("--device-ui-smoke")) await VerifyDeviceNavigationAsync();
+        if (Environment.GetCommandLineArgs().Contains("--navigation-smoke")) await VerifyShellNavigationAsync();
+    }
+
+    private async Task VerifyShellNavigationAsync()
+    {
+        try
+        {
+            var dashboard = (DashboardPage)ContentFrame.Content;
+            var button = (Button)dashboard.FindName("OpenPerformanceButton");
+            var peer = new Microsoft.UI.Xaml.Automation.Peers.ButtonAutomationPeer(button);
+            var invoke = (Microsoft.UI.Xaml.Automation.Provider.IInvokeProvider)peer.GetPattern(
+                Microsoft.UI.Xaml.Automation.Peers.PatternInterface.Invoke);
+            invoke.Invoke();
+            await Task.Delay(300);
+            var selected = ContentFrame.Content is PerformancePage
+                && (Navigation.SelectedItem as NavigationViewItem)?.Tag?.ToString() == "performance"
+                && Navigation.IsBackEnabled;
+            GoBack();
+            await Task.Delay(300);
+            var back = ContentFrame.Content is DashboardPage
+                && (Navigation.SelectedItem as NavigationViewItem)?.Tag?.ToString() == "dashboard";
+            StartupDiagnostics.Write($"Shell navigation smoke: selected={selected}; back={back}; historyClean={!ContentFrame.CanGoBack}");
+        }
+        catch (Exception exception) { StartupDiagnostics.Write("Shell navigation smoke failed.", exception); }
+        finally { Close(); }
     }
 
     private async Task VerifyDeviceNavigationAsync()
@@ -216,9 +242,35 @@ public sealed partial class MainWindow : Window
 
     private void Navigation_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
-        if (args.SelectedItem is NavigationViewItem item && item.Tag is string tag && _pages.TryGetValue(tag, out var page))
+        if (!_syncingNavigation && args.SelectedItem is NavigationViewItem item && item.Tag is string tag)
         {
-            ContentFrame.Navigate(page, tag);
+            NavigateTo(tag);
         }
+    }
+
+    public void NavigateTo(string tag)
+    {
+        if (!_pages.TryGetValue(tag, out var page)) throw new ArgumentOutOfRangeException(nameof(tag));
+        if (ContentFrame.CurrentSourcePageType != page) ContentFrame.Navigate(page, tag);
+    }
+
+    private void ContentFrame_Navigated(object sender, NavigationEventArgs args)
+    {
+        var tag = _pages.FirstOrDefault(pair => pair.Value == args.SourcePageType).Key;
+        var item = Navigation.MenuItems.Concat(Navigation.FooterMenuItems)
+            .OfType<NavigationViewItem>().FirstOrDefault(candidate => candidate.Tag?.ToString() == tag);
+        _syncingNavigation = true;
+        try { Navigation.SelectedItem = item; }
+        finally { _syncingNavigation = false; }
+        Navigation.IsBackEnabled = ContentFrame.CanGoBack;
+        Navigation.IsBackButtonVisible = ContentFrame.CanGoBack
+            ? NavigationViewBackButtonVisible.Visible : NavigationViewBackButtonVisible.Collapsed;
+    }
+
+    private void Navigation_BackRequested(NavigationView sender, NavigationViewBackRequestedEventArgs args) => GoBack();
+
+    private void GoBack()
+    {
+        if (ContentFrame.CanGoBack) ContentFrame.GoBack();
     }
 }

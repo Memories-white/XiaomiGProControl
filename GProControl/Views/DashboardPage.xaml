@@ -109,7 +109,7 @@
                         <TextBlock x:Name="DashboardModeText" Text="等待原厂服务读回" FontSize="20" FontWeight="SemiBold" />
                         <TextBlock Text="已验证控制默认可用；可在设置中恢复上次模式。" Opacity="0.55" FontSize="12" />
                     </StackPanel>
-                    <Button Grid.Column="1" Content="查看模式" VerticalAlignment="Center" Click="OpenPerformance_Click" />
+                    <Button x:Name="OpenPerformanceButton" Grid.Column="1" Content="查看模式" VerticalAlignment="Center" Click="OpenPerformance_Click" />
                 </Grid>
             </Border>
 
