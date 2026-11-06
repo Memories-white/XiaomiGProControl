@@ -8,6 +8,8 @@ public sealed partial class DevicePage : Page
 {
     private bool _updating;
     private bool _loaded;
+    private bool _switchBusy;
+    private readonly Dictionary<MiDeviceSwitch, bool> _confirmed = new();
 
     public DevicePage()
     {
@@ -35,6 +37,7 @@ public sealed partial class DevicePage : Page
             if (!_loaded) return;
             ApplyState();
             WmiProbeDetail.Text = result.Message;
+            await RefreshSwitchesAsync();
         }
         else WmiProbeDetail.Text = state.Message;
     }
@@ -54,9 +57,9 @@ public sealed partial class DevicePage : Page
         var verified = App.HardwareControl.IsWmiTransportVerified;
         var enabled = canWrite && verified;
         _updating = true;
-        FnKeyToggle.IsEnabled = enabled;
-        WindowsKeyToggle.IsEnabled = enabled;
-        TouchpadToggle.IsEnabled = enabled;
+        FnKeyToggle.IsEnabled = enabled && !_switchBusy;
+        WindowsKeyToggle.IsEnabled = enabled && !_switchBusy;
+        TouchpadToggle.IsEnabled = enabled && !_switchBusy;
         _updating = false;
         WmiProbeButton.IsEnabled = App.HardwareControl.State.CanArmWrites && !App.HardwareControl.IsWmiProbeRunning;
         if (App.HardwareControl.LastWmiProbeResult is { } result)
@@ -65,6 +68,26 @@ public sealed partial class DevicePage : Page
         DeviceInfo.Title = verified ? "设备自检已通过" : "设备自检未通过或正在进行";
         DeviceInfo.Message = verified ? "设备开关已可使用。每次启动自动执行只读自检。"
             : "等待原厂服务并运行只读自检；失败后可点击重新自检。";
+    }
+
+    private async Task RefreshSwitchesAsync()
+    {
+        foreach (var (device, toggle) in new[] { (MiDeviceSwitch.FnKey, FnKeyToggle),
+            (MiDeviceSwitch.WindowsKey, WindowsKeyToggle), (MiDeviceSwitch.Touchpad, TouchpadToggle) })
+        {
+            var result = await App.HardwareControl.GetDeviceSwitchAsync(device);
+            if (!_loaded) return;
+            if (result is { Verified: true, ReadbackValue: int value })
+            {
+                var on = device == MiDeviceSwitch.WindowsKey ? value == 1 : value == 0;
+                _confirmed[device] = on;
+                _updating = true;
+                toggle.IsOn = on;
+                _updating = false;
+            }
+            else { toggle.IsEnabled = false; DeviceSwitchStatus.Text = result.Message; }
+        }
+        if (_confirmed.Count == 3) DeviceSwitchStatus.Text = "开关已与设备当前状态同步。";
     }
 
     private async void WmiProbeButton_Click(object sender, RoutedEventArgs e)
@@ -80,14 +103,15 @@ public sealed partial class DevicePage : Page
 
         ApplyState();
         WmiProbeDetail.Text = result.Message;
+        if (result.Verified) await RefreshSwitchesAsync();
         DeviceInfo.Message = result.Verified
-            ? "自检已确认原厂服务执行了 WmiObtain 代理。开关没有独立状态读回，切换后请以实际按键行为确认。"
+            ? "自检通过，开关状态已从设备同步；应用后将再次读回确认。"
             : result.Message;
     }
 
     private async void DeviceSwitch_Toggled(object sender, RoutedEventArgs e)
     {
-        if (_updating || !_loaded || sender is not ToggleSwitch toggle)
+        if (_updating || !_loaded || _switchBusy || sender is not ToggleSwitch toggle)
         {
             return;
         }
@@ -107,9 +131,11 @@ public sealed partial class DevicePage : Page
         // switch value maps straight through.
         var hardwareEnabled = device == MiDeviceSwitch.WindowsKey ? !requested : requested;
 
-        toggle.IsEnabled = false;
-        DeviceSwitchStatus.Text = "正在通过原厂代理提交…";
+        _switchBusy = true;
+        ApplyState();
+        DeviceSwitchStatus.Text = "正在应用并确认设备状态…";
         var result = await App.HardwareControl.SetDeviceSwitchAsync(device, hardwareEnabled);
+        _switchBusy = false;
         if (!_loaded)
         {
             return;
@@ -118,17 +144,17 @@ public sealed partial class DevicePage : Page
         if (!result.Verified)
         {
             _updating = true;
-            toggle.IsOn = !requested;
+            toggle.IsOn = _confirmed.GetValueOrDefault(device, !requested);
             _updating = false;
             DeviceSwitchStatus.Text = result.Message;
         }
         else
         {
-            DeviceSwitchStatus.Text =
-                $"已提交：{DescribeIntent(device, requested)}。该通道没有独立状态读回，请以实际按键 / 触控板行为确认。";
+            _confirmed[device] = requested;
+            DeviceSwitchStatus.Text = $"已确认：{DescribeIntent(device, requested)}。";
         }
 
-        toggle.IsEnabled = App.HardwareControl.State.CanWrite && App.HardwareControl.IsWmiTransportVerified;
+        ApplyState();
     }
 
     private static string DescribeIntent(MiDeviceSwitch device, bool requested) => device switch

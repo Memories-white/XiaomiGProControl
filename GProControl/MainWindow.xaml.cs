@@ -127,9 +127,11 @@ public sealed partial class MainWindow : Window
         StartupDiagnostics.Write("Window restored from background.");
     }
 
-    private void ExitApplication()
+    private async void ExitApplication()
     {
+        if (_exiting) return;
         _exiting = true;
+        await App.AmbientLighting.StopAsync();
         _tray?.Dispose();
         Close();
     }
@@ -155,6 +157,46 @@ public sealed partial class MainWindow : Window
         RestoreFromBackground();
         var restored = IsWindowVisible(handle);
         StartupDiagnostics.Write($"Background lifecycle smoke: hidden={hidden}; restored={restored}");
+        if (Environment.GetCommandLineArgs().Contains("--device-ui-smoke")) await VerifyDeviceNavigationAsync();
+    }
+
+    private async Task VerifyDeviceNavigationAsync()
+    {
+        int? original = null;
+        var changed = false; var preserved = false; var restored = false;
+        try
+        {
+            await App.HardwareControl.RefreshAsync();
+            App.HardwareControl.SetWriteArmed(true);
+            await App.HardwareControl.EnsureWmiTransportAsync();
+            var before = await App.HardwareControl.GetDeviceSwitchAsync(Protocol.MiDeviceSwitch.WindowsKey);
+            if (before is not { Verified: true, ReadbackValue: int value }) throw new InvalidOperationException("No initial key state.");
+            original = value;
+            ContentFrame.Navigate(typeof(DevicePage));
+            await Task.Delay(1800);
+            var toggle = (ToggleSwitch)((DevicePage)ContentFrame.Content).FindName("WindowsKeyToggle");
+            if (!toggle.IsEnabled || toggle.IsOn != (value == 1)) throw new InvalidOperationException("Initial UI state does not match hardware.");
+            toggle.IsOn = value == 0;
+            await Task.Delay(1500);
+            var actual = await App.HardwareControl.GetDeviceSwitchAsync(Protocol.MiDeviceSwitch.WindowsKey);
+            changed = actual.Verified && actual.ReadbackValue == 1-value;
+            ContentFrame.Navigate(typeof(DashboardPage));
+            ContentFrame.Navigate(typeof(DevicePage));
+            await Task.Delay(1800);
+            toggle = (ToggleSwitch)((DevicePage)ContentFrame.Content).FindName("WindowsKeyToggle");
+            preserved = toggle.IsOn == (value == 0);
+        }
+        catch (Exception exception) { StartupDiagnostics.Write("Device navigation smoke failed.", exception); }
+        finally
+        {
+            if (original is int value)
+            {
+                var result = await App.HardwareControl.SetDeviceSwitchAsync(Protocol.MiDeviceSwitch.WindowsKey, value == 0);
+                restored = result.Verified;
+            }
+            StartupDiagnostics.Write($"Device navigation smoke: changed={changed}; preserved={preserved}; restored={restored}");
+            Close();
+        }
     }
 
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr window);

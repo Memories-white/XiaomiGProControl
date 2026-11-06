@@ -16,6 +16,7 @@ public sealed class AppSettings
     public bool RestoreLighting { get; set; } = true;
     public bool? LastLightingEnabled { get; set; }
     public GProControl.Models.WaveLightingProfile? LastWaveLighting { get; set; }
+    public GProControl.Models.LightingProfile? LastLightingProfile { get; set; }
 }
 
 public sealed class AppSettingsStore

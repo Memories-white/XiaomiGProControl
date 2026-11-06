@@ -124,7 +124,7 @@ public sealed partial class SettingsPage : Page
         if (_updating) return;
         App.Settings.Update(value => value.RestoreLighting = RestoreLightingToggle.IsOn);
         RestoreLightingDetail.Text = RestoreLightingToggle.IsOn
-            ? "启动后恢复最后一次成功应用的波浪参数和灯光开关。"
+            ? "启动后恢复最后一次成功应用的键盘灯效和灯光开关。"
             : "已关闭启动时恢复灯效。";
     }
 

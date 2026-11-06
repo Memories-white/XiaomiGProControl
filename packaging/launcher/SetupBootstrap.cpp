@@ -7,6 +7,19 @@
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "user32.lib")
 
+static bool IsUpgrade() {
+    wchar_t location[32768]{};
+    DWORD size = sizeof(location);
+    if (RegGetValueW(HKEY_LOCAL_MACHINE,
+        L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{C185DBE4-018F-45B8-9464-5474FCA1C537}_is1",
+        L"InstallLocation", RRF_RT_REG_SZ | RRF_SUBKEY_WOW6464KEY, nullptr, location, &size) != ERROR_SUCCESS)
+        return false;
+    std::wstring executable = location;
+    if (!executable.empty() && executable.back() != L'\\') executable += L'\\';
+    executable += L"GProControl.exe";
+    return GetFileAttributesW(executable.c_str()) != INVALID_FILE_ATTRIBUTES;
+}
+
 // The embedded Inno loader extracts before elevating. Elevate this outer EXE
 // through its manifest instead, before creating any temporary files.
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR arguments, int) {
@@ -47,6 +60,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR arguments, int) {
         CloseHandle(file); file = INVALID_HANDLE_VALUE;
         std::wstring command = L"\"" + payload + L"\" ";
         command += arguments;
+        if (IsUpgrade()) command += L" /SILENT /SUPPRESSMSGBOXES /SP- /NORESTART";
         STARTUPINFOW startup{sizeof(STARTUPINFOW)};
         PROCESS_INFORMATION process{};
         if (!CreateProcessW(payload.c_str(), command.data(), nullptr, nullptr, FALSE,

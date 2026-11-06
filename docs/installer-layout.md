@@ -1,7 +1,7 @@
-# G Pro Control 0.10.0 安装包
+# G Pro Control 0.12.0 安装包
 
-正式入口是 `artifacts/latest/GProControl-0.10.0-Setup-x64.exe`。这是中文/英文向导 EXE，
-默认安装到 `C:\Program Files\G Pro Control`，支持覆盖安装、快捷方式和卸载。
+安装包输出为 `artifacts/latest/GProControl-0.12.0-Setup-x64.exe`。首次安装使用中文/英文向导，
+默认安装到 `C:\Program Files\G Pro Control`，支持快捷方式和卸载；已有安装自动沿用旧目录升级。
 包含 x64 .NET 与 Windows App SDK 运行库，不需要另行安装 .NET。
 发布者元数据使用 `Memories_white`；安装包没有 Authenticode 签名。
 
@@ -23,6 +23,21 @@ G Pro Control/
 
 DLL 是否托管通过 PE 的 CLR 元数据头判断，不依赖文件名猜测。分类映射记录在
 `Runtime/layout.tsv`，每个文件有原始路径、安装路径与 SHA-256。
+
+## 覆盖升级行为（0.12.0）
+
+安装器查询同一 AppId 的已有安装注册信息，沿用原安装目录；已有安装通过静默升级流程
+覆盖同名程序文件，不再单独询问覆盖或重新选择目录。UAC 权限确认仍由 Windows 处理。
+正在使用的旧程序由 Restart Manager 关闭，范围包括旧版运行缓存中的实际程序。
+
+`Runtime/installed-files.txt` 记录安装器拥有的文件。升级前读取旧清单，新程序及运行缓存
+准备成功后，比对新清单并删除不再使用的旧程序文件。0.11.1 等没有此清单的版本从
+`Runtime/layout.tsv` 恢复旧文件列表。删除路径限定在本安装目录与程序分类中，并检查
+reparse/junction 路径；用户配置和清单外额外文件保留。旧缓存只按旧清单的 SHA-256
+标识清理，不扫描或删除其他版本的任意目录。
+
+上述是已实现的升级逻辑。0.12.0 的运行中升级、旧清单迁移和注册信息保留验收正在进行；
+下文历史 0.11.x 通过记录不代表这些新增路径已通过。
 
 ## 为什么还有运行缓存
 
@@ -66,10 +81,12 @@ pwsh -File scripts/build-installer.ps1
 ## 验收
 
 `scripts/test-installer.ps1` 需管理员权限，安装到项目 `.tmp-tests` 中的独立随机目录，
-然后执行覆盖重装、527 文件哈希检查、窗口启动、托盘后台隐藏与恢复、卸载与设置保留检查。
+然后执行覆盖重装、文件哈希检查、窗口启动、托盘后台隐藏与恢复、卸载与设置保留检查。
+0.12.0 升级验收已通过不传 `/DIR` 沿用自定义目录、废弃文件删除、额外文件保留、运行中
+旧实例关闭，以及旧版 `layout.tsv` 清单迁移。测试结束已确认恢复测试前的安装注册信息。
 `--package-smoke` 验证模式跳过注册开机任务和硬件设置恢复。
 
-2026-11-06，0.11.0 实测通过：
+2026-11-06，0.12.0 实测通过：
 
 - `InstallExitCode=0`，`ReinstallExitCode=0`，`UninstallExitCode=0`。
 - 86 个语言目录均在 `Languages`，根目录无 DLL。
@@ -77,6 +94,8 @@ pwsh -File scripts/build-installer.ps1
 - `WindowTitle=G Pro Control`，`WindowResponding=True`。
 - `BackgroundLifecyclePassed=True`：托盘图标注册后隐藏，再恢复窗口成功。
 - `UserSettingsPreserved=True`，`ExistingStartupTaskPreserved=True`。
+- `PreviousDirectoryReused=True`，`RunningInstanceClosed=True`，`RetiredFilesRemoved=True`。
+- `UnownedFilesPreserved=True`，`LegacyLayoutMigrated=True`，`PriorRegistrationPreserved=True`。
 - 临时安装与本次缓存已卸载删除，用户设置未删除。
 
 详细结果见 `analysis-runtime/installer-validation.json`。

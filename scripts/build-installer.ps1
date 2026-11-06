@@ -75,6 +75,9 @@ $runtime = Join-Path $app 'Runtime'
 New-Item -ItemType Directory -Path $runtime -Force | Out-Null
 [System.IO.File]::WriteAllLines((Join-Path $runtime 'layout.tsv'), $manifest, [System.Text.UTF8Encoding]::new($false))
 Copy-Item -LiteralPath (Join-Path $root 'packaging\Directory-Layout.txt') -Destination (Join-Path $runtime 'Directory-Layout.txt')
+$owned = @(Get-ChildItem -LiteralPath $app -File -Recurse | ForEach-Object { [IO.Path]::GetRelativePath($app, $_.FullName) })
+$owned += 'Runtime\installed-files.txt'
+[IO.File]::WriteAllLines((Join-Path $runtime 'installed-files.txt'), $owned, [Text.UTF8Encoding]::new($false))
 if (!$InnoCompiler) { $InnoCompiler = Join-Path $root '.tools\InnoSetup\ISCC.exe' }
 if (!(Test-Path -LiteralPath $InnoCompiler)) { throw "Inno Setup compiler missing: $InnoCompiler" }
 $innoOutput = Join-Path $stage 'inno'
@@ -92,8 +95,11 @@ $bootstrapResource = @"
 "@
 $bootstrapResource += "`r`n" + ((Get-Content -LiteralPath (Join-Path $root 'packaging\launcher\Launcher.rc') | Select-Object -Skip 3) -join "`r`n").Replace('G Pro Control Launcher','G Pro Control Setup').Replace('GProControl.exe','GProControl-Setup.exe')
 [IO.File]::WriteAllText((Join-Path $nativeOutput 'SetupBootstrap.rc'), $bootstrapResource, [Text.UTF8Encoding]::new($false))
-& $env:ComSpec /c (Join-Path $root 'packaging\launcher\build-setup.cmd') $visualStudio $nativeOutput $embeddedSetup $installer
+$bootstrapOutput = Join-Path $nativeOutput 'GProControl-Setup.exe'
+& $env:ComSpec /c (Join-Path $root 'packaging\launcher\build-setup.cmd') $visualStudio $nativeOutput $embeddedSetup $bootstrapOutput
 if ($LASTEXITCODE -ne 0) { throw 'Elevated setup bootstrapper build failed.' }
+& (Join-Path $PSScriptRoot 'test-setup-elevation.ps1') -Installer $bootstrapOutput
+[IO.File]::Move($bootstrapOutput, $installer, $true)
 $report = [pscustomobject]@{
     Version=$version
     Installer=$installer

@@ -508,6 +508,21 @@ public sealed class XiaomiHardwareControlService : IHardwareControlService
         }
     }
 
+    public async Task<HardwareActionResult> GetDeviceSwitchAsync(MiDeviceSwitch device, CancellationToken cancellationToken = default)
+    {
+        if (!Enum.IsDefined(device) || !State.IsTargetModel)
+            return HardwareActionResult.Rejected("设备型号或开关编号不匹配。");
+        await _commandLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var result = await Task.Run(() => _sensorReader.ExecuteDeviceSwitch(device), cancellationToken).ConfigureAwait(false);
+            return result is { Value1: <= 1 } value
+                ? new HardwareActionResult(false, true, "已从固件读取当前状态。", (int)value.Value1)
+                : new HardwareActionResult(false, false, "无法读取当前设备状态，请以管理员权限启动后重试。");
+        }
+        finally { _commandLock.Release(); }
+    }
+
     public async Task<HardwareActionResult> SetDeviceSwitchAsync(
         MiDeviceSwitch device,
         bool enabled,
@@ -519,6 +534,7 @@ public sealed class XiaomiHardwareControlService : IHardwareControlService
             return guard;
         }
 
+        if (!Enum.IsDefined(device)) return HardwareActionResult.Rejected("不支持的设备开关。");
         if (!_wmiTransportVerified)
         {
             return HardwareActionResult.Rejected("请先在设备页运行一次 WMI 代理自检。");
@@ -527,6 +543,22 @@ public sealed class XiaomiHardwareControlService : IHardwareControlService
         await _commandLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            var expected = enabled ? 0 : 1;
+            var before = await Task.Run(() => _sensorReader.ExecuteDeviceSwitch(device), cancellationToken).ConfigureAwait(false);
+            if (before is { Value1: <= 1 } current && current.Value1 == expected)
+                return new HardwareActionResult(false, true, "当前已是目标状态。", expected);
+            var direct = await Task.Run(() => _sensorReader.ExecuteDeviceSwitch(device, enabled), cancellationToken).ConfigureAwait(false);
+            if (direct is not null)
+            {
+                for (var attempt = 0; attempt < 8; attempt++)
+                {
+                    await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+                    var readback = await Task.Run(() => _sensorReader.ExecuteDeviceSwitch(device), cancellationToken).ConfigureAwait(false);
+                    if (readback is { Value1: <= 1 } confirmed && confirmed.Value1 == expected)
+                        return new HardwareActionResult(true, true, "设备设置已写入并从固件确认。", expected);
+                }
+                return new HardwareActionResult(true, false, "固件尚未确认目标状态，请刷新后重试。");
+            }
             var inData = MiCommonInterfaceCodec.WriteDeviceSwitch(device, enabled);
             var startedAt = DateTime.Now;
             await _client.SendAsync(
@@ -534,12 +566,10 @@ public sealed class XiaomiHardwareControlService : IHardwareControlService
             var executed = await _logReader.WaitForWmiExecuteAsync(
                 startedAt, ToDetailPrefix(inData), PerformanceApplyTimeout, cancellationToken).ConfigureAwait(false);
 
-            return executed
-                ? new HardwareActionResult(
-                    true,
-                    true,
-                    $"原厂服务已执行{(enabled ? "启用" : "停用")}操作。该通道没有独立状态读回，请以实际按键或触控板行为为准。")
-                : new HardwareActionResult(true, false, "原厂服务没有确认执行该操作。");
+            var fallback = await Task.Run(() => _sensorReader.ExecuteDeviceSwitch(device), cancellationToken).ConfigureAwait(false);
+            return new HardwareActionResult(true, executed && fallback?.Value1 == expected,
+                executed && fallback?.Value1 == expected ? "原厂服务已执行，固件状态已确认。" : "设备状态未读回确认，不会标记为成功。",
+                fallback is { Value1: <= 1 } state ? (int)state.Value1 : null);
         }
         catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException or OperationCanceledException)
         {

@@ -168,6 +168,13 @@ try
         reloaded.Update(value => value.CloseAction = CloseAction.Ask);
         Require(new AppSettingsStore(settingsPath).Current.CloseAction == CloseAction.Ask,
             "users must be able to re-enable the close prompt");
+        reloaded.Update(value => value.LastLightingProfile = new(11, 0xFF, 0, 3, 0, 0, "7F0020"));
+        Require(new AppSettingsStore(settingsPath).Current.LastLightingProfile is { IsSupported: true, EffectCode: 11, ColorsHex: "7F0020" },
+            "custom solid profile must survive settings reload");
+        Require(!new GProControl.Models.LightingProfile(4,0,0,3,1).IsSupported
+            && !new GProControl.Models.LightingProfile(1,8,0,3,1).IsSupported
+            && !new GProControl.Models.LightingProfile(11,255,0,3,0,0,"FF0000").IsSupported,
+            "unsupported effect, custom-pixel mode and out-of-range colors must be rejected");
     }
     finally
     {

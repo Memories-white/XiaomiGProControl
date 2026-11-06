@@ -5,19 +5,20 @@ var restoreOnly = args is ["--restore-full-speed"];
 var screenAcceleration = args is ["--screen-acceleration"];
 var sensorRead = args.Length >= 1 && args[0].Equals("--sensor-read", StringComparison.OrdinalIgnoreCase);
 var deviceCheck = args.Length >= 1 && args[0].Equals("--device-check", StringComparison.OrdinalIgnoreCase);
+var keyRoundtrip = args.Length >= 1 && args[0].Equals("--windows-key-roundtrip", StringComparison.OrdinalIgnoreCase);
 var outputIndex = Array.FindIndex(args, value => value.Equals("--output", StringComparison.OrdinalIgnoreCase));
 var outputPath = outputIndex >= 0 && outputIndex + 1 < args.Length ? args[outputIndex + 1] : null;
 var targetServiceValue = -1;
 var hasTarget = args is ["--target-service-value", var rawTarget]
     && int.TryParse(rawTarget, out targetServiceValue);
-if (!restoreOnly && !hasTarget && !screenAcceleration && !sensorRead && !deviceCheck)
+if (!restoreOnly && !hasTarget && !screenAcceleration && !sensorRead && !deviceCheck && !keyRoundtrip)
 {
     Console.Error.WriteLine("Usage: GProControl.HardwareSmokeTests --restore-full-speed | --target-service-value <0|1|2> | --screen-acceleration | --sensor-read [--output <path>]");
     return 64;
 }
 
 var target = PerformanceModeCatalog.FindByServiceValue(targetServiceValue);
-if (!restoreOnly && !screenAcceleration && !sensorRead && !deviceCheck && (target is null || target.Value.ServiceValue == 3))
+if (!restoreOnly && !screenAcceleration && !sensorRead && !deviceCheck && !keyRoundtrip && (target is null || target.Value.ServiceValue == 3))
 {
     Console.Error.WriteLine("Only reversible non-full-speed target values 0, 1, and 2 are accepted.");
     return 64;
@@ -31,6 +32,32 @@ if (!state.CanArmWrites || !hardware.SetWriteArmed(true))
 {
     Console.Error.WriteLine($"Hardware guard rejected the test: {state.Message}");
     return 2;
+}
+
+if (keyRoundtrip)
+{
+    var probe = await hardware.EnsureWmiTransportAsync();
+    var before = await hardware.GetDeviceSwitchAsync(MiDeviceSwitch.WindowsKey);
+    if (!probe.Verified || before.ReadbackValue is not int original) return 10;
+    var lines = new List<string>();
+    try
+    {
+        foreach (var enabled in new[] { false, true })
+        {
+            var changed = await hardware.SetDeviceSwitchAsync(MiDeviceSwitch.WindowsKey, enabled);
+            var actual = await hardware.GetDeviceSwitchAsync(MiDeviceSwitch.WindowsKey);
+            lines.Add($"enabled={enabled}; verified={changed.Verified}; raw={actual.ReadbackValue}");
+            if (!changed.Verified || actual.ReadbackValue != (enabled ? 0 : 1)) return 11;
+        }
+    }
+    finally
+    {
+        var restored = await hardware.SetDeviceSwitchAsync(MiDeviceSwitch.WindowsKey, original == 0);
+        lines.Add($"restored={restored.Verified}; original={original}");
+        if (!string.IsNullOrWhiteSpace(outputPath)) File.WriteAllLines(outputPath, lines);
+        foreach(var line in lines) Console.WriteLine(line);
+    }
+    return 0;
 }
 
 if (deviceCheck)

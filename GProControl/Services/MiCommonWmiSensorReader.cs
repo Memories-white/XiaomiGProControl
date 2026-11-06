@@ -11,6 +11,36 @@ internal sealed class MiCommonWmiSensorReader
     private const string Query = "SELECT * FROM MICommonInterface";
     private const string MethodName = "MiInterface";
 
+    public MiCommonInterfaceResult? ExecuteDeviceSwitch(MiDeviceSwitch device, bool? enabled = null)
+    {
+        if (!Enum.IsDefined(device)) throw new ArgumentOutOfRangeException(nameof(device));
+        try
+        {
+            var scope = new ManagementScope(NamespacePath);
+            scope.Connect();
+            using var searcher = new ManagementObjectSearcher(scope, new ObjectQuery(Query));
+            using var instances = searcher.Get();
+            foreach (ManagementObject instance in instances)
+            {
+                using (instance)
+                using (var input = instance.GetMethodParameters(MethodName))
+                {
+                    input["InData"] = enabled is bool value
+                        ? MiCommonInterfaceCodec.WriteDeviceSwitch(device, value)
+                        : MiCommonInterfaceCodec.ReadDeviceSwitch(device);
+                    using var output = instance.InvokeMethod(MethodName, input, null);
+                    if (output?["OutData"] is byte[] bytes
+                        && MiCommonInterfaceCodec.TryReadResult(bytes, out var result)
+                        && result.Succeeded && result.Value0 == (ushort)device
+                        && (enabled is not null || result.Function == MiCommonInterfaceCodec.DeviceSwitchFunction))
+                        return result;
+                }
+            }
+        }
+        catch (Exception exception) when (exception is ManagementException or UnauthorizedAccessException or COMException) { }
+        return null;
+    }
+
     public int? TryReadGraphicMode()
     {
         try

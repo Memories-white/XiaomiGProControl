@@ -72,7 +72,7 @@
                 </Border>
             </Grid>
 
-            <TextBlock x:Name="DeviceSwitchStatus" Text="开关状态以实际按键行为为准；该代理通道不提供独立状态读回。"
+            <TextBlock x:Name="DeviceSwitchStatus" Text="正在读取设备当前状态…"
                        Opacity="0.55" FontSize="12" TextWrapping="Wrap" />
 
             <Grid ColumnSpacing="18">

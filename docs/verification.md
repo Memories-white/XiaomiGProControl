@@ -18,6 +18,30 @@ CI 仅构建主程序及运行前两组离线测试，不执行真机写入工�
 
 ## 已记录的验证
 
+### 0.12.0 本轮验证
+
+| 检查 | 当前证据 |
+| --- | --- |
+| Windows 键锁 | 管理员直接 WMI 写入与读回 `0→1→0`，原值已恢复 |
+| 设备页切换 | 实际 WinUI 导航 smoke：`changed=True; preserved=True; restored=True` |
+| 常规灯效 | 9 种硬件效果 1/2/3/5/6/7/8/10/11，及 11/FF RGB 柔光，写入/读回/保存通过 |
+| 灯效参数 | 配色 0/1/2、亮度 0..3、速度 1..3；彩色波浪方向 2、长度 1/2 通过 |
+| 光影 / 光音联动 | 模式 22/21 均启动、运行、停止并恢复原灯效通过 |
+| 0.12.0 安装 / 升级 | 首次安装、运行中升级、旧目录沿用、废弃文件删除、额外文件保留、旧清单迁移、窗口/后台恢复及卸载全部通过 |
+
+设备页 smoke 使用 `--package-smoke --device-ui-smoke`，执行真实页面导航、开关更改和
+回到设备页后的显示核对，并恢复测试前状态。它不能替代用户实际按键行为或跨重启验收。
+
+灯效参数按效果适用范围核对，未遍历所有组合。雨滴编码 4、自定义像素配色 8 和长度
+3 被本机拒绝，均未开放。软件联动使用整键盘统一颜色：音量峰值驱动亮度、主屏幕
+4×4 网格平均颜色驱动 RGB；未实现原厂完整音频频谱或逐键图像映射。动态帧不写闪存。
+详情与复现命令见 [灯效分析](lighting-hid-analysis.md#0120-效果扩展与验证2026-11-06)。
+
+安装验收结果：`PreviousDirectoryReused=True; RunningInstanceClosed=True; RetiredFilesRemoved=True;
+UnownedFilesPreserved=True; LegacyLayoutMigrated=True`。527 个运行文件哈希一致、86 个语言目录集中存放。
+测试后 `UserSettingsPreserved=True; ExistingStartupTaskPreserved=True; PriorRegistrationPreserved=True`，
+安装、重装与卸载退出码均为 0。测试副本使用独立 smoke 实例标识，不唤醒现有正常运行实例。
+
 ### 原厂服务与设备
 
 - 四档性能模式经过实际写入与 EC 回读，受控测试后恢复原模式。
@@ -82,7 +106,7 @@ power-roundtrip=on->off->on restored=True
 ## 尚未完成
 
 - 完整 Windows 重启后的灯效恢复验收。
-- 波浪以外效果、其他档位、四区 RGB 和机身灯。
+- 原厂完整音频频谱、逐键图像映射、独立分区 RGB 和机身灯。
 - 自定义风扇曲线 / 固定 RPM 的协议与读回。
 - WLAN 强制加速开关；当前依赖原厂路由器路径。
 - 跨机型、跨原厂软件版本和跨键盘硬件版本兼容。

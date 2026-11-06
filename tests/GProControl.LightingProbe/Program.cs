@@ -12,6 +12,75 @@ if (devicePath is null)
 Console.WriteLine($"device={devicePath}");
 try
 {
+    if (args.Contains("--validate-ambient", StringComparer.OrdinalIgnoreCase))
+    {
+        var original = await client.ReadCommandAsync(1, TimeSpan.FromSeconds(2));
+        var ambient = new AmbientLightingService(() => true);
+        try
+        {
+            foreach (var mode in new[] {21,22})
+            {
+                await ambient.StartAsync(mode, 3, "007F7F");
+                await Task.Delay(1400);
+                if (ambient.ActiveEffect != mode || ambient.LastError is not null)
+                    throw new InvalidOperationException($"Ambient mode {mode} failed: {ambient.LastError}");
+                await ambient.StopAsync();
+                if (ambient.LastError is not null) throw new InvalidOperationException(ambient.LastError);
+                Console.WriteLine($"ambient={mode}; running=True; stopped=True");
+            }
+        }
+        finally { await ambient.StopAsync(); await client.RestoreCapturedAsync(original, TimeSpan.FromSeconds(2)); }
+        var final = await client.ReadCommandAsync(1, TimeSpan.FromSeconds(2));
+        if (!final.AsSpan(4,9).SequenceEqual(original.AsSpan(4,9))) throw new InvalidOperationException("Ambient state was not restored.");
+        Console.WriteLine("ambient-restored=True");
+        return 0;
+    }
+    if (args.Contains("--validate-all-effects", StringComparer.OrdinalIgnoreCase))
+    {
+        var timeout = TimeSpan.FromSeconds(2);
+        var original = await client.ReadCommandAsync(1, timeout);
+        try
+        {
+            foreach (byte effect in new byte[] { 1,2,3,5,6,7,8,10,11 })
+            {
+                var profile = new GProControl.Models.LightingProfile(effect, 0, 0, 3, 1,
+                    effect is 3 or 6 or 8 ? (byte)1 : (byte)0);
+                var effectState = await client.ApplyEffectAsync(profile, true, timeout);
+                Console.WriteLine($"effect={effect}; confirmed={effectState.EffectCode == effect}; frame={effectState.RawFrameHex}");
+            }
+            foreach (var colors in new[] { "7F0000", "007F00", "00007F" })
+            {
+                var softState = await client.ApplyEffectAsync(new(11, 0xFF, 0, 3, 1, 0, colors), true, timeout);
+                Console.WriteLine($"soft-light={colors}; confirmed={softState.EffectCode == 11}; frame={softState.RawFrameHex}");
+            }
+            foreach (byte value in new byte[] {0,1,2,3})
+            {
+                await client.ApplyEffectAsync(new(1, 0, 0, value, 1), true, timeout);
+                Console.WriteLine($"wave-brightness={value}; verified=True");
+            }
+            foreach (byte speed in new byte[] {1,2,3}) {
+                await client.ApplyEffectAsync(new(1,0,0,3,speed), true, timeout);
+                Console.WriteLine($"wave-speed={speed}; verified=True");
+            }
+            foreach (byte palette in new byte[] {0,1,2})
+            {
+                await client.ApplyEffectAsync(new(1, palette, 0, 3, 1), true, timeout);
+                Console.WriteLine($"palette={palette}; verified=True");
+            }
+            foreach (byte length in new byte[] {1,2})
+            {
+                await client.ApplyEffectAsync(new(6,0,2,3,1,length), true, timeout);
+                Console.WriteLine($"color-wave-length={length}; direction=2; verified=True");
+            }
+        }
+        finally
+        {
+            await client.RestoreCapturedAsync(original, timeout);
+            var restored = await client.ReadCommandAsync(1, timeout);
+            Console.WriteLine($"effects-roundtrip-restored={restored.AsSpan(4,9).SequenceEqual(original.AsSpan(4,9))}");
+        }
+        return 0;
+    }
     if (args.Contains("--validate-power-roundtrip", StringComparer.OrdinalIgnoreCase))
     {
         var originalFrame = await client.ReadCommandAsync(1, TimeSpan.FromSeconds(2));
@@ -95,6 +164,6 @@ catch (OperationCanceledException)
 }
 catch (Exception exception)
 {
-    Console.Error.WriteLine($"{exception.GetType().Name}: {exception.Message}");
+    Console.Error.WriteLine(exception.ToString());
     return 5;
 }

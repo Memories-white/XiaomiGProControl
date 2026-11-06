@@ -7,6 +7,8 @@
     <RootNamespace>GProControl.LightingProbe</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\..\GProControl\Services\AmbientLightingService.cs" Link="Services\AmbientLightingService.cs" />
+    <Compile Include="..\..\GProControl\Models\LightingProfile.cs" Link="Models\LightingProfile.cs" />
     <Compile Include="..\..\GProControl\Models\KeyboardLightingState.cs" Link="Models\KeyboardLightingState.cs" />
     <Compile Include="..\..\GProControl\Protocol\KeyboardLightingCodec.cs" Link="Protocol\KeyboardLightingCodec.cs" />
     <Compile Include="..\..\GProControl\Services\B21HidReadOnlyClient.cs" Link="Services\B21HidReadOnlyClient.cs" />

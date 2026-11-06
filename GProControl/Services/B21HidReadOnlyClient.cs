@@ -219,6 +219,78 @@ internal sealed class B21HidClient
         => ApplyLightingProfileAsync(new WaveLightingProfile(paletteCode, directionCode,
             brightnessCode, speedCode), true, timeout, cancellationToken);
 
+    public async Task<KeyboardLightingState> ApplyEffectAsync(LightingProfile profile, bool enabled,
+        TimeSpan timeout, CancellationToken cancellationToken = default, bool persist = true)
+    {
+        if (!profile.IsSupported) throw new ArgumentOutOfRangeException(nameof(profile));
+        await _commandLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var version = await ExchangeAsync(6, null, timeout, cancellationToken).ConfigureAwait(false);
+            if (version[5] != 1 || version[6] != 0x13) throw new InvalidOperationException("键盘硬件版本不匹配。");
+            var original = await ExchangeAsync(1, null, timeout, cancellationToken).ConfigureAwait(false);
+            if (!KeyboardLightingCodec.TryParseCmd1Reply(original, DateTime.Now, out var state) || state?.LedAreaMask != 0xB)
+                throw new InvalidOperationException("无法确认当前键盘灯状态。");
+            var target = (byte[])original.Clone(); target[3] = 2;
+            target[5] = enabled ? profile.EffectCode : (byte)0xFF;
+            target[6] = enabled ? profile.PaletteCode : (byte)0;
+            target[7] = enabled ? profile.DirectionCode : (byte)0;
+            target[8] = profile.BrightnessCode;
+            target[9] = enabled ? profile.SpeedCode : (byte)0;
+            target[11] = profile.LengthCode;
+            target[12] = enabled ? (byte)0xB3 : (byte)0xB0;
+            if (enabled && profile.ColorsHex.Length > 0)
+            {
+                var colors = Convert.FromHexString(profile.ColorsHex);
+                colors.CopyTo(target, profile.PaletteCode == 0xFF ? 18 : 15);
+            }
+            if (original.AsSpan(4).SequenceEqual(target.AsSpan(4))) return state!;
+            try
+            {
+                await ExchangeAsync(2, target, timeout, cancellationToken).ConfigureAwait(false);
+                var applied = await ExchangeAsync(1, null, timeout, cancellationToken).ConfigureAwait(false);
+                RequireEffectState(applied, target);
+                if (persist)
+                {
+                    await ExchangeAsync(5, null, timeout, cancellationToken).ConfigureAwait(false);
+                    applied = await ExchangeAsync(1, null, timeout, cancellationToken).ConfigureAwait(false);
+                    RequireEffectState(applied, target);
+                }
+                KeyboardLightingCodec.TryParseCmd1Reply(applied, DateTime.Now, out var confirmed);
+                return confirmed!;
+            }
+            catch (Exception failure)
+            {
+                try { await RestoreStateAsync(original, timeout, "effect").ConfigureAwait(false); }
+                catch (Exception rollback) { throw new AggregateException("灯效应用失败，恢复也未确认。", failure, rollback); }
+                throw new InvalidOperationException("灯效应用失败，原始配置已恢复。", failure);
+            }
+        }
+        finally { _commandLock.Release(); }
+    }
+
+    private static void RequireEffectState(byte[] actual, byte[] target)
+    {
+        var fields = new List<int> {4, 5, 6, 8, 12};
+        if (target[5] is 1 or 6 or 7) fields.Add(7);
+        if (target[5] is 1 or 3 or 6 or 7 or 8) fields.Add(9);
+        if (target[5] is 3 or 6 or 8) fields.Add(11);
+        if (fields.Any(index => actual[index] != target[index]))
+            throw new InvalidDataException($"灯效读回不匹配：expected={Convert.ToHexString(target.AsSpan(4,9))}; actual={Convert.ToHexString(actual.AsSpan(4,9))}");
+        if (target[6] == 0xFF && !actual.AsSpan(18, 3).SequenceEqual(target.AsSpan(18, 3))
+            || target[6] == 8 && !actual.AsSpan(15, 48).SequenceEqual(target.AsSpan(15, 48)))
+            throw new InvalidDataException("键盘颜色读回不匹配。");
+    }
+
+    internal async Task RestoreCapturedAsync(byte[] original, TimeSpan timeout)
+    {
+        if (!KeyboardLightingCodec.TryParseCmd1Reply(original, DateTime.Now, out var state)
+            || state?.LedAreaMask != 0xB) throw new InvalidDataException("无效的灯效备份。");
+        await _commandLock.WaitAsync();
+        try { await RestoreStateAsync(original, timeout, "captured profile"); }
+        finally { _commandLock.Release(); }
+    }
+
     public async Task<KeyboardLightingState> ApplyLightingProfileAsync(
         WaveLightingProfile profile,
         bool enabled,
@@ -485,10 +557,10 @@ internal sealed class B21HidClient
                 rollback[3] = 2;
                 await ExchangeAsync(2, rollback, timeout, CancellationToken.None).ConfigureAwait(false);
                 var restored = await ExchangeAsync(1, null, timeout, CancellationToken.None).ConfigureAwait(false);
-                RequireStateBlock(restored, original, $"restored {description} state (attempt {attempt})");
+                RequireEffectState(restored, original);
                 await ExchangeAsync(5, null, timeout, CancellationToken.None).ConfigureAwait(false);
                 var persisted = await ExchangeAsync(1, null, timeout, CancellationToken.None).ConfigureAwait(false);
-                RequireStateBlock(persisted, original, $"persisted restored {description} state (attempt {attempt})");
+                RequireEffectState(persisted, original);
                 return;
             }
             catch (Exception exception)

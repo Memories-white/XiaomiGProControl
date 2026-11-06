@@ -10,7 +10,7 @@
             </StackPanel>
 
             <InfoBar x:Name="StatusInfoBar" IsOpen="True" Severity="Informational" Title="正在验证灯效控制"
-                     Message="通过 HID CMD 6 验证硬件版本，再用 CMD 1 主动读取当前状态。仅对已验证的波浪参数开放写入。" />
+                     Message="正在读取键盘版本和当前灯效。" />
 
             <Grid ColumnSpacing="18">
                 <Grid.ColumnDefinitions>
@@ -27,7 +27,7 @@
                         </Grid.RowDefinitions>
                         <StackPanel>
                             <TextBlock Text="灯效预览" Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Text="内置键盘 · 四区背光" Opacity="0.55" FontSize="12" />
+                            <TextBlock Text="内置 RGB 键盘" Opacity="0.55" FontSize="12" />
                         </StackPanel>
                         <Border Grid.Row="1" Margin="0,20" CornerRadius="18" Padding="28"
                                 BorderBrush="{StaticResource CardStrokeBrush}" BorderThickness="1">
@@ -71,7 +71,9 @@
                         </Grid>
                         <StackPanel Spacing="8">
                             <TextBlock Text="效果" FontWeight="SemiBold" />
-                            <TextBox x:Name="EffectValueText" IsReadOnly="True" Text="未知" />
+                            <ComboBox x:Name="EffectSelector" DisplayMemberPath="Name" HorizontalAlignment="Stretch" SelectionChanged="Effect_Changed" />
+                            <TextBlock x:Name="EffectDescription" Opacity="0.6" FontSize="12" TextWrapping="Wrap" />
+                            <ColorPicker x:Name="EffectColor" Color="#FF4F8CFF" IsAlphaEnabled="False" IsAlphaSliderVisible="False" IsAlphaTextInputVisible="False" Visibility="Collapsed" />
                         </StackPanel>
                         <StackPanel Spacing="8">
                             <TextBlock Text="配色 / 方向" FontWeight="SemiBold" />
@@ -82,30 +84,37 @@
                                 </Grid.ColumnDefinitions>
                                 <ComboBox x:Name="PaletteComboBox" IsEnabled="False" HorizontalAlignment="Stretch">
                                     <x:String>配色第 1 项</x:String>
+                                    <x:String>配色第 2 项</x:String>
                                     <x:String>配色第 3 项</x:String>
                                 </ComboBox>
                                 <ComboBox x:Name="DirectionComboBox" Grid.Column="1" IsEnabled="False" HorizontalAlignment="Stretch">
-                                    <x:String>方向 2</x:String>
-                                    <x:String>方向 4</x:String>
                                 </ComboBox>
                             </Grid>
                         </StackPanel>
                         <StackPanel Spacing="8">
-                            <TextBlock Text="亮度（已验证档位）" FontWeight="SemiBold" />
+                            <TextBlock Text="亮度" FontWeight="SemiBold" />
                             <ComboBox x:Name="BrightnessComboBox" IsEnabled="False" HorizontalAlignment="Stretch">
                                 <x:String>1 档</x:String>
                                 <x:String>2 档</x:String>
+                                    <x:String>3 档</x:String>
+                                    <x:String>4 档</x:String>
                             </ComboBox>
                         </StackPanel>
                         <StackPanel Spacing="8">
-                            <TextBlock Text="速度（已验证档位）" FontWeight="SemiBold" />
+                            <TextBlock Text="速度" FontWeight="SemiBold" />
                             <ComboBox x:Name="SpeedComboBox" IsEnabled="False" HorizontalAlignment="Stretch">
                                 <x:String>1 档</x:String>
+                                <x:String>2 档</x:String>
                                 <x:String>3 档</x:String>
                             </ComboBox>
                         </StackPanel>
-                        <Button x:Name="ApplyButton" Content="应用波浪参数" Click="Apply_Click"
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="动态长度" FontWeight="SemiBold" />
+                            <ComboBox x:Name="LengthComboBox" HorizontalAlignment="Stretch"><x:String>短</x:String><x:String>长</x:String></ComboBox>
+                        </StackPanel>
+                        <Button x:Name="ApplyButton" Content="应用灯效" Click="Apply_Click"
                                 IsEnabled="False" HorizontalAlignment="Stretch" />
+                        <Button x:Name="StopAmbientButton" Content="停止动态灯效" Visibility="Collapsed" Click="StopAmbient_Click" HorizontalAlignment="Stretch" />
                     </StackPanel>
                 </Border>
             </Grid>

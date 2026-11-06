@@ -10,6 +10,7 @@
 #include <vector>
 #include <stdexcept>
 #include <string>
+#include <functional>
 #include <array>
 #pragma comment(lib, "bcrypt.lib")
 #pragma comment(lib, "shell32.lib")
@@ -145,10 +146,13 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR arguments, int) {
         auto root = fs::path(executable.data()).parent_path();
         auto runtime = Prepare(root);
         if (std::wstring(arguments) == L"--prepare-runtime") return 0;
-        Handle instance{CreateMutexW(nullptr, TRUE, L"Local\\GProControl.InstalledApp")};
+        const bool smoke = std::wstring(arguments).find(L"--package-smoke") != std::wstring::npos;
+        const auto mutexName = smoke ? L"Local\\GProControl.Smoke." + std::to_wstring(std::hash<std::wstring>{}(root.wstring()))
+            : std::wstring(L"Local\\GProControl.InstalledApp");
+        Handle instance{CreateMutexW(nullptr, TRUE, mutexName.c_str())};
         if (!instance.value) throw std::runtime_error("Cannot create the application mutex.");
         if (GetLastError() == ERROR_ALREADY_EXISTS) {
-            PostMessageW(HWND_BROADCAST, RegisterWindowMessageW(L"GProControl.ShowMainWindow"), 0, 0);
+            if (!smoke) PostMessageW(HWND_BROADCAST, RegisterWindowMessageW(L"GProControl.ShowMainWindow"), 0, 0);
             return 0;
         }
         SetEnvironmentVariableW(L"GPROCONTROL_LAUNCHER_PATH", executable.data());

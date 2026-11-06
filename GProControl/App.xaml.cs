@@ -10,6 +10,7 @@ public partial class App : Application
     public static MainWindow? MainWindow { get; private set; }
     public static IHardwareControlService HardwareControl { get; } = new XiaomiHardwareControlService();
     public static AppSettingsStore Settings { get; } = new();
+    internal static AmbientLightingService AmbientLighting { get; } = new(() => HardwareControl.State.CanWrite);
     public static string StartupRestoreMessage { get; private set; } = "尚未执行启动恢复。";
     public static string LightingRestoreMessage { get; private set; } = "尚未恢复灯效。";
     public static bool GraphicModeRestartPending { get; set; }
@@ -73,8 +74,10 @@ public partial class App : Application
             LightingRestoreMessage = "已关闭启动时恢复灯效。";
             return;
         }
-        if (Settings.Current.LastWaveLighting is not { IsValidated: true } profile
-            || Settings.Current.LastLightingEnabled is not bool enabled)
+        var profile = Settings.Current.LastLightingProfile;
+        if (profile is null && Settings.Current.LastWaveLighting is { IsValidated: true } wave)
+            profile = new LightingProfile(1, wave.PaletteCode, wave.DirectionCode, wave.BrightnessCode, wave.SpeedCode);
+        if (profile is not { IsSupported: true } || Settings.Current.LastLightingEnabled is not bool enabled)
         {
             LightingRestoreMessage = "尚无保存的灯效；在灯效页应用一次即可记住。";
             return;
@@ -86,8 +89,8 @@ public partial class App : Application
         }
         try
         {
-            await new B21HidClient().ApplyLightingProfileAsync(profile, enabled, TimeSpan.FromSeconds(2));
-            LightingRestoreMessage = enabled ? "已恢复上次波浪灯效。" : "已恢复键盘灯关闭状态。";
+            await new B21HidClient().ApplyEffectAsync(profile, enabled, TimeSpan.FromSeconds(2));
+            LightingRestoreMessage = enabled ? "已恢复上次键盘灯效。" : "已恢复键盘灯关闭状态。";
         }
         catch (Exception exception)
         {

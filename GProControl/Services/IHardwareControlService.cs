@@ -27,6 +27,7 @@ public interface IHardwareControlService
     Task<HardwareActionResult> SetPerformanceModeAsync(int setterValue, CancellationToken cancellationToken = default);
     Task<HardwareActionResult> SetScreenAccelerationAsync(bool enabled, CancellationToken cancellationToken = default);
     Task<HardwareActionResult> SetDeviceSwitchAsync(MiDeviceSwitch device, bool enabled, CancellationToken cancellationToken = default);
+    Task<HardwareActionResult> GetDeviceSwitchAsync(MiDeviceSwitch device, CancellationToken cancellationToken = default);
     Task<HardwareActionResult> GetGraphicModeAsync(CancellationToken cancellationToken = default);
     Task<HardwareActionResult> SetGraphicModeAsync(int mode, CancellationToken cancellationToken = default);
 }
