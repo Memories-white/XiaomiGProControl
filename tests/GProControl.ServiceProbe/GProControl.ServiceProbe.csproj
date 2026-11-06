@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>GProControl.ServiceProbe</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Management" Version="10.0.11" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\GProControl\Models\KeyboardLightingState.cs" Link="Models\KeyboardLightingState.cs" />
+    <Compile Include="..\..\GProControl\Models\ThermalFanSnapshot.cs" Link="Models\ThermalFanSnapshot.cs" />
+    <Compile Include="..\..\GProControl\Protocol\*.cs" Link="Protocol\%(Filename)%(Extension)" />
+    <Compile Include="..\..\GProControl\Services\MiCommonWmiSensorReader.cs" Link="Services\MiCommonWmiSensorReader.cs" />
+  </ItemGroup>
+</Project>

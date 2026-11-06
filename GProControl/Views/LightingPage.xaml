@@ -1,0 +1,114 @@
+<Page
+    x:Class="GProControl.Views.LightingPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer>
+        <StackPanel Padding="28,20,28,32" Spacing="18">
+            <StackPanel Spacing="5">
+                <TextBlock Text="键盘灯效" FontSize="28" FontWeight="SemiBold" />
+                <TextBlock Text="简洁地管理亮度、颜色与动态效果" Opacity="0.62" />
+            </StackPanel>
+
+            <InfoBar x:Name="StatusInfoBar" IsOpen="True" Severity="Informational" Title="正在验证灯效控制"
+                     Message="通过 HID CMD 6 验证硬件版本，再用 CMD 1 主动读取当前状态。仅对已验证的波浪参数开放写入。" />
+
+            <Grid ColumnSpacing="18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.35*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Style="{StaticResource DashboardCardStyle}" MinHeight="290">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="灯效预览" Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Text="内置键盘 · 四区背光" Opacity="0.55" FontSize="12" />
+                        </StackPanel>
+                        <Border Grid.Row="1" Margin="0,20" CornerRadius="18" Padding="28"
+                                BorderBrush="{StaticResource CardStrokeBrush}" BorderThickness="1">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#332E8BFF" Offset="0" />
+                                    <GradientStop Color="#3359D9B7" Offset="0.52" />
+                                    <GradientStop Color="#337C5CFC" Offset="1" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                                <FontIcon Glyph="&#xE765;" FontSize="68" Opacity="0.88" />
+                                <TextBlock x:Name="LightingPreviewText" Text="等待读取" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
+                            <Border Width="18" Height="18" CornerRadius="9" Background="#2E8BFF" />
+                            <Border Width="18" Height="18" CornerRadius="9" Background="#59D9B7" />
+                            <Border Width="18" Height="18" CornerRadius="9" Background="#7C5CFC" />
+                            <TextBlock x:Name="LightingSourceText" Text="尚未读取原厂日志" VerticalAlignment="Center" Opacity="0.55" FontSize="12" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="1" Style="{StaticResource DashboardCardStyle}">
+                    <StackPanel Spacing="18">
+                        <Grid>
+                            <TextBlock Text="当前灯效状态" Style="{StaticResource SectionTitleStyle}" />
+                            <Button x:Name="RefreshButton" Content="刷新" HorizontalAlignment="Right" Click="Refresh_Click" />
+                        </Grid>
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="键盘灯" FontWeight="SemiBold" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                                <TextBlock x:Name="PowerValueText" Text="未知" VerticalAlignment="Center" Opacity="0.7" />
+                                <Button x:Name="PowerButton" Content="开关" IsEnabled="False" Click="Power_Click" />
+                            </StackPanel>
+                        </Grid>
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="效果" FontWeight="SemiBold" />
+                            <TextBox x:Name="EffectValueText" IsReadOnly="True" Text="未知" />
+                        </StackPanel>
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="配色 / 方向" FontWeight="SemiBold" />
+                            <Grid ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox x:Name="PaletteComboBox" IsEnabled="False" HorizontalAlignment="Stretch">
+                                    <x:String>配色第 1 项</x:String>
+                                    <x:String>配色第 3 项</x:String>
+                                </ComboBox>
+                                <ComboBox x:Name="DirectionComboBox" Grid.Column="1" IsEnabled="False" HorizontalAlignment="Stretch">
+                                    <x:String>方向 2</x:String>
+                                    <x:String>方向 4</x:String>
+                                </ComboBox>
+                            </Grid>
+                        </StackPanel>
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="亮度（已验证档位）" FontWeight="SemiBold" />
+                            <ComboBox x:Name="BrightnessComboBox" IsEnabled="False" HorizontalAlignment="Stretch">
+                                <x:String>1 档</x:String>
+                                <x:String>2 档</x:String>
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="速度（已验证档位）" FontWeight="SemiBold" />
+                            <ComboBox x:Name="SpeedComboBox" IsEnabled="False" HorizontalAlignment="Stretch">
+                                <x:String>1 档</x:String>
+                                <x:String>3 档</x:String>
+                            </ComboBox>
+                        </StackPanel>
+                        <Button x:Name="ApplyButton" Content="应用波浪参数" Click="Apply_Click"
+                                IsEnabled="False" HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

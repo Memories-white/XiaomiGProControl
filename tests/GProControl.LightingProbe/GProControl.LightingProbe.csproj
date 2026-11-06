@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>GProControl.LightingProbe</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\GProControl\Models\KeyboardLightingState.cs" Link="Models\KeyboardLightingState.cs" />
+    <Compile Include="..\..\GProControl\Protocol\KeyboardLightingCodec.cs" Link="Protocol\KeyboardLightingCodec.cs" />
+    <Compile Include="..\..\GProControl\Services\B21HidReadOnlyClient.cs" Link="Services\B21HidReadOnlyClient.cs" />
+  </ItemGroup>
+</Project>

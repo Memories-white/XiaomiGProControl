@@ -1,0 +1,27 @@
+name: Build and offline tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows x64
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build WinUI application
+        run: dotnet build GProControl/GProControl.csproj -c Release -p:Platform=x64
+      - name: Protocol tests (offline)
+        run: dotnet run --project tests/GProControl.ProtocolSmokeTests -c Release
+      - name: Synthetic log and settings tests (offline)
+        run: dotnet run --project tests/GProControl.HardwareLogTests -c Release

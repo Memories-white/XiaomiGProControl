@@ -1,0 +1,32 @@
+name: 问题反馈
+description: 报告启动、界面或已实现硬件控制中的问题。
+title: '[Bug] '
+body:
+  - type: markdown
+    attributes:
+      value: '请勿上传账号凭据、完整本机日志、原厂二进制或 BIOS。先删除用户名、设备序列号及其他个人信息。'
+  - type: input
+    id: version
+    attributes:
+      label: 应用版本 / Windows 版本
+      placeholder: '例如：0.10.0 / Windows 11 x64'
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: 机型与原厂控制中心 / 服务版本
+      placeholder: '只填型号，不填序列号'
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤、预期结果和实际结果
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 去标识化的最小诊断片段
+      render: text

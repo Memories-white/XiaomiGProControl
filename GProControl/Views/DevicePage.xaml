@@ -1,0 +1,109 @@
+<Page
+    x:Class="GProControl.Views.DevicePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:views="using:GProControl.Views">
+    <ScrollViewer>
+        <StackPanel Padding="28,20,28,32" Spacing="18">
+            <StackPanel Spacing="5">
+                <TextBlock Text="设备控制" FontSize="28" FontWeight="SemiBold" />
+                <TextBlock Text="快捷键、触控板与显示相关设置" Opacity="0.62" />
+            </StackPanel>
+
+            <InfoBar x:Name="DeviceInfo" IsOpen="True" Severity="Informational" Title="正在自动检查设备控制"
+                     Message="每次启动后自动运行只读自检，通过后启用 Fn、Windows 键与触控板控制。" />
+
+            <Border Style="{StaticResource DashboardCardStyle}">
+                <Grid ColumnSpacing="18">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Spacing="6" VerticalAlignment="Center">
+                        <TextBlock Text="WMI 代理自检" FontWeight="SemiBold" />
+                        <TextBlock x:Name="WmiProbeDetail" Text="尚未运行。自检只发送一次只读查询，不会改变任何硬件状态。"
+                                   Opacity="0.6" FontSize="12" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <Button x:Name="WmiProbeButton" Grid.Column="1" Content="重新自检" VerticalAlignment="Center"
+                            Click="WmiProbeButton_Click" />
+                </Grid>
+            </Border>
+
+            <Grid ColumnSpacing="14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+                <Border Style="{StaticResource DashboardCardStyle}">
+                    <Grid>
+                        <StackPanel Spacing="8">
+                            <FontIcon Glyph="&#xE765;" FontSize="22" HorizontalAlignment="Left" />
+                            <TextBlock Text="Fn 功能键" FontSize="17" FontWeight="SemiBold" />
+                            <TextBlock Text="打开＝启用 Fn 键" Opacity="0.58" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <ToggleSwitch x:Name="FnKeyToggle" Tag="1" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                      IsEnabled="False" Toggled="DeviceSwitch_Toggled" />
+                    </Grid>
+                </Border>
+                <Border Grid.Column="1" Style="{StaticResource DashboardCardStyle}">
+                    <Grid>
+                        <StackPanel Spacing="8">
+                            <PathIcon Width="22" Height="22" HorizontalAlignment="Left"
+                                      Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                      Data="M0,0 L10,0 10,10 0,10 Z M12,0 L22,0 22,10 12,10 Z M0,12 L10,12 10,22 0,22 Z M12,12 L22,12 22,22 12,22 Z" />
+                            <TextBlock Text="Windows 键" FontSize="17" FontWeight="SemiBold" />
+                            <TextBlock Text="打开＝锁定，游戏时避免误触开始菜单" Opacity="0.58" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <ToggleSwitch x:Name="WindowsKeyToggle" Tag="2" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                      IsEnabled="False" Toggled="DeviceSwitch_Toggled" />
+                    </Grid>
+                </Border>
+                <Border Grid.Column="2" Style="{StaticResource DashboardCardStyle}">
+                    <Grid>
+                        <StackPanel Spacing="8">
+                            <FontIcon Glyph="&#xEC77;" FontSize="22" HorizontalAlignment="Left" />
+                            <TextBlock Text="触控板" FontSize="17" FontWeight="SemiBold" />
+                            <TextBlock Text="打开＝启用触控板" Opacity="0.58" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <ToggleSwitch x:Name="TouchpadToggle" Tag="0" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                      IsEnabled="False" Toggled="DeviceSwitch_Toggled" />
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <TextBlock x:Name="DeviceSwitchStatus" Text="开关状态以实际按键行为为准；该代理通道不提供独立状态读回。"
+                       Opacity="0.55" FontSize="12" TextWrapping="Wrap" />
+
+            <Grid ColumnSpacing="18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+                <Border Style="{StaticResource DashboardCardStyle}">
+                    <views:GraphicModeControl />
+                </Border>
+                <Border Grid.Column="1" Style="{StaticResource DashboardCardStyle}">
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="显示设置" Style="{StaticResource SectionTitleStyle}" />
+                        <Grid>
+                            <StackPanel>
+                                <TextBlock Text="屏幕亮度" FontWeight="SemiBold" />
+                                <TextBlock Text="跟随系统设置" Opacity="0.55" FontSize="12" />
+                            </StackPanel>
+                            <TextBlock Text="系统管理" HorizontalAlignment="Right" VerticalAlignment="Center" Opacity="0.6" />
+                        </Grid>
+                        <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                        <Grid>
+                            <StackPanel>
+                                <TextBlock Text="HDR 与色域" FontWeight="SemiBold" />
+                                <TextBlock Text="保留 Windows 颜色配置" Opacity="0.55" FontSize="12" />
+                            </StackPanel>
+                            <FontIcon Glyph="&#xE72A;" HorizontalAlignment="Right" VerticalAlignment="Center" Opacity="0.55" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

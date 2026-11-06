@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="340" viewBox="0 0 1280 340" role="img" aria-labelledby="title desc">
+  <title id="title">Xiaomi G Pro Control</title>
+  <desc id="desc">Minimal Windows 11-inspired controls, backed by verified protocols.</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0b1221"/><stop offset="1" stop-color="#152c3d"/></linearGradient>
+    <linearGradient id="accent" x2="1" y2="1"><stop stop-color="#5b9dff"/><stop offset="1" stop-color="#55e3bd"/></linearGradient>
+    <radialGradient id="glow"><stop stop-color="#2563eb" stop-opacity=".3"/><stop offset="1" stop-color="#2563eb" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1280" height="340" rx="24" fill="url(#bg)"/>
+  <ellipse cx="1010" cy="180" rx="360" ry="230" fill="url(#glow)"/>
+  <g fill="none" stroke="#ffffff" stroke-opacity=".04">
+    <path d="M0 85H1280M0 170H1280M0 255H1280M160 0V340M320 0V340M480 0V340M640 0V340M800 0V340M960 0V340M1120 0V340"/>
+  </g>
+  <rect x="64" y="58" width="48" height="48" rx="13" fill="url(#accent)"/>
+  <path d="M77 71h9v9h-9zm13 0h9v9h-9zM77 84h9v9h-9zm13 0h9v9h-9z" fill="#0b1221"/>
+  <text x="128" y="88" fill="#90a8bd" font-family="Segoe UI,Arial,sans-serif" font-size="16" letter-spacing="3">COMMUNITY ENGINEERED</text>
+  <text x="64" y="172" fill="#f1f6ff" font-family="Segoe UI,Arial,sans-serif" font-size="52" font-weight="700">Xiaomi G Pro Control</text>
+  <text x="67" y="214" fill="#9fb2c8" font-family="Segoe UI,Arial,sans-serif" font-size="21">A quieter interface. A verified path to your hardware.</text>
+  <g font-family="Segoe UI,Arial,sans-serif" font-size="13" fill="#b6c7da">
+    <rect x="66" y="253" width="124" height="31" rx="15.5" fill="#ffffff" fill-opacity=".06"/><text x="87" y="274">WINDOWS 11</text>
+    <rect x="201" y="253" width="105" height="31" rx="15.5" fill="#ffffff" fill-opacity=".06"/><text x="222" y="274">WINUI 3</text>
+    <rect x="317" y="253" width="144" height="31" rx="15.5" fill="#55e3bd" fill-opacity=".10"/><text x="337" y="274" fill="#74e4c6">PREVIEW 0.11.0</text>
+  </g>
+  <g transform="translate(840 65)">
+    <rect width="360" height="210" rx="20" fill="#1d3148" stroke="#6688b8" stroke-opacity=".25"/>
+    <circle cx="22" cy="22" r="4" fill="#5b9dff"/><rect x="35" y="18" width="110" height="8" rx="4" fill="#8ea4bf" fill-opacity=".45"/>
+    <rect x="20" y="48" width="153" height="93" rx="12" fill="#10253a"/><rect x="187" y="48" width="153" height="93" rx="12" fill="#10253a"/>
+    <path d="M42 110l21-22 20 9 21-28 23 13 25-20" fill="none" stroke="#68aeff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="263" cy="96" r="28" fill="none" stroke="#27455d" stroke-width="7"/><path d="M263 68a28 28 0 1 1-27 35" fill="none" stroke="#55e3bd" stroke-width="7" stroke-linecap="round"/>
+    <rect x="20" y="155" width="320" height="35" rx="10" fill="#10253a"/><rect x="34" y="169" width="123" height="7" rx="3.5" fill="#809bb6" fill-opacity=".5"/>
+    <rect x="279" y="164" width="45" height="17" rx="8.5" fill="#55e3bd"/><circle cx="315" cy="172.5" r="5.5" fill="#0b2435"/>
+  </g>
+</svg>

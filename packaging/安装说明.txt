@@ -1,0 +1,41 @@
+﻿G Pro Control — 安装说明
+=========================
+
+这个压缩包不写入系统目录，也不需要管理员权限。解压后：
+
+  1. 右键 Install-GProControl.ps1 → “使用 PowerShell 运行”
+     （或在该目录打开 PowerShell 执行：powershell -ExecutionPolicy Bypass -File .\Install-GProControl.ps1）
+
+  2. 安装完成后，从开始菜单或桌面启动 G Pro Control。
+
+安装位置
+--------
+  %LOCALAPPDATA%\Programs\GProControl
+
+目录结构（安装包里只有这些）
+---------------------------
+  app\GProControl.exe            主程序
+  app\*.dll, app\*.pri, app\Views\...  运行所需组件
+  app\runtimes\win-x64\...       只保留 x64 运行时
+  app\zh-CN, zh-TW, en-US        只保留这三种语言资源
+
+  其余 arm64 / x86 运行时和几十个语言文件夹已在打包时删除，安装后不会再出现。
+
+卸载
+----
+  在“设置 → 应用”里找到 G Pro Control 卸载；
+  或运行安装目录外的 Uninstall-GProControl.ps1。
+
+关于管理员权限
+--------------
+  程序清单是 asInvoker，本身不会请求提权。
+  但原厂 MiDeviceService 的命名管道可能拒绝普通权限的进程，
+  如果“设置”页提示管道拒绝访问、或设备控制无法连接，
+  请右键快捷方式 → “以管理员身份运行”。
+
+已知边界
+--------
+  - 性能模式 / 屏幕加速 / WLAN 状态：已验证可用。
+  - Fn、Windows 键、触控板：需要先运行“WMI 代理自检”通过才会开放。
+  - 键盘灯效：仍在定位传输链路（走 HID，不在 MiDeviceService 内），暂未开放。
+  - CPU 温度、风扇转速、显卡模式切换：原厂 WMI 通道未打通，保持只读或禁用。

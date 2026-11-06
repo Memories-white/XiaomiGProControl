@@ -1,0 +1,33 @@
+G Pro Control 0.11.0 - Installation layout
+
+GProControl.exe       Native launcher with embedded icon and administrator manifest.
+Libraries/Application Application entrypoint and host configuration.
+Libraries/Managed     Managed .NET assemblies, classified by PE metadata.
+Libraries/Native      Native WinUI / Windows App SDK libraries.
+Libraries/DotNet      Native .NET runtime and diagnostic support.
+Languages             All localized language folders, including MUI files.
+Resources             XAML, PRI indexes, images, icons and WinRT metadata.
+Runtime               Runtime mapping and installation layout documentation.
+Uninstall             Uninstaller and its data (created by Setup).
+
+Windows/WinUI requires its original resource-relative paths at execution time.
+The launcher verifies SHA-256 hashes and generates a private, versioned cache at:
+  %ProgramData%\GProControl\Runtime\<manifest-sha256>
+The cache contains the original supported runtime layout; the installation
+directory stays classified. A new version gets a new cache. Existing cached
+files are verified before execution. Only Administrators/System may write caches.
+
+The launcher always runs Libraries/Application/GProControl.exe through the verified
+runtime cache. Do not launch the classified inner EXE directly.
+
+User settings are preserved at:
+  %LocalAppData%\Memories_white\GProControl\settings.json
+Startup diagnostics are at:
+  %LocalAppData%\GProControl\Logs\startup.log
+
+An administrator prompt is expected when launched manually because EC/WMI access
+requires elevation. The existing optional highest-privilege login task continues
+to point to the installed launcher, not a version-specific cache.
+
+The installer is not Authenticode-signed. Publisher metadata is Memories_white.
+Uninstall keeps user settings and removes the application login task/runtime cache.

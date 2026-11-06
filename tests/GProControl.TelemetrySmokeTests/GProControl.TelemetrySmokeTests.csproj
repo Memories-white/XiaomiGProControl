@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>GProControl.TelemetrySmokeTests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\GProControl\Models\SystemSnapshot.cs" Link="Models\SystemSnapshot.cs" />
+    <Compile Include="..\..\GProControl\Services\ISystemMonitorService.cs" Link="Services\ISystemMonitorService.cs" />
+    <Compile Include="..\..\GProControl\Services\WindowsSystemMonitorService.cs" Link="Services\WindowsSystemMonitorService.cs" />
+    <Compile Include="..\..\GProControl\Services\NvidiaGpuTelemetry.cs" Link="Services\NvidiaGpuTelemetry.cs" />
+  </ItemGroup>
+</Project>
