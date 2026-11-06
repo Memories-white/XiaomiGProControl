@@ -1,4 +1,4 @@
-G Pro Control 0.11.0 - Installation layout
+G Pro Control 0.11.1 - Installation layout
 
 GProControl.exe       Native launcher with embedded icon and administrator manifest.
 Libraries/Application Application entrypoint and host configuration.

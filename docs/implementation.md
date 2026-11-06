@@ -79,6 +79,7 @@ WinUI 资源存在相对路径约束，因此采用原生启动器＋分类资�
 4. 生成每个文件的原始相对路径、安装路径和 SHA-256 清单。
 5. C++ 启动器校验并准备管理员可写的 ProgramData 缓存，恢复 WinUI 所需执行布局。
 6. Inno Setup 生成中文/英文安装器，卸载保留用户设置。
+7. 原生安装入口嵌入 Inno 输出，在解压前通过清单请求 UAC 提升，修复普通权限 Temp 拒绝访问。
 
 完整目录见 [installer-layout.md](installer-layout.md)。
 

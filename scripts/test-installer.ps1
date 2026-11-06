@@ -6,6 +6,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $version = ([xml](Get-Content -LiteralPath (Join-Path $root 'GProControl\GProControl.csproj'))).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
 if (!$Installer) { $Installer = Join-Path $root "artifacts\latest\GProControl-$version-Setup-x64.exe" }
+& (Join-Path $PSScriptRoot 'test-setup-elevation.ps1') -Installer $Installer
 $testRoot = Join-Path $root ('.tmp-tests\install-' + [Guid]::NewGuid().ToString('N'))
 $resolvedTestRoot = [System.IO.Path]::GetFullPath($testRoot)
 $allowedRoot = [System.IO.Path]::GetFullPath((Join-Path $root '.tmp-tests')) + '\'

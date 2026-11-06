@@ -8,7 +8,7 @@
 
 轻量的界面，经过验证的硬件协议，可追溯的逆向过程。
 
-![Version](https://img.shields.io/badge/preview-0.11.0-3b82f6?style=flat-square)
+![Version](https://img.shields.io/badge/preview-0.11.1-3b82f6?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Windows_11_x64-64748b?style=flat-square)
 ![Stack](https://img.shields.io/badge/C%23-.NET_10_%2B_WinUI_3-14b8a6?style=flat-square)
 
@@ -74,10 +74,10 @@ XiaomiGProControl 是针对 **Redmi G Pro 2024 / TM2211** 的非官方控制中�
 
 ### 安装
 
-当前安装器构建产物为 `GProControl-0.11.0-Setup-x64.exe`，采用中文/英文 Inno Setup
+当前安装器构建产物为 `GProControl-0.11.1-Setup-x64.exe`，采用中文/英文 Inno Setup
 向导，包含 .NET 与 Windows App SDK 运行库。安装包不存入 Git 源码历史，本仓库当前未发布 Release。
 
-安装器和启动器均声明管理员权限，双击自动请求 UAC 提升。开机自启动通过当前用户的
+安装器最外层入口和启动器均声明管理员权限，双击在解压前自动请求 UAC 提升。开机自启动通过当前用户的
 最高权限计划任务实现，不需要手工设置快捷方式的“以管理员身份运行”。
 
 安装根目录只保留启动器；DLL、语言和界面资源分类存放。首次安装准备 WinUI 兼容

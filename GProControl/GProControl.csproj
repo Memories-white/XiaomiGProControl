@@ -15,7 +15,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
-    <Version>0.11.0</Version>
+    <Version>0.11.1</Version>
     <Company>Memories_white</Company>
     <Authors>Memories_white</Authors>
   </PropertyGroup>

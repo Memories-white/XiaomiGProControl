@@ -77,9 +77,23 @@ New-Item -ItemType Directory -Path $runtime -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $root 'packaging\Directory-Layout.txt') -Destination (Join-Path $runtime 'Directory-Layout.txt')
 if (!$InnoCompiler) { $InnoCompiler = Join-Path $root '.tools\InnoSetup\ISCC.exe' }
 if (!(Test-Path -LiteralPath $InnoCompiler)) { throw "Inno Setup compiler missing: $InnoCompiler" }
-& $InnoCompiler /Qp "/DAppVersion=$version" "/DSourceRoot=$app" "/DInstallerOutput=$latest" (Join-Path $root 'packaging\GProControl.iss')
+$innoOutput = Join-Path $stage 'inno'
+New-Item -ItemType Directory -Path $innoOutput -Force | Out-Null
+& $InnoCompiler /Qp "/DAppVersion=$version" "/DSourceRoot=$app" "/DInstallerOutput=$innoOutput" (Join-Path $root 'packaging\GProControl.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed.' }
 $installer = Join-Path $latest "GProControl-$version-Setup-x64.exe"
+$embeddedSetup = Join-Path $innoOutput "GProControl-$version-Setup-x64.exe"
+$resourcePath = { param($value) $value.Replace('\','\\') }
+$bootstrapResource = @"
+#include <windows.h>
+1 RT_MANIFEST "$( & $resourcePath (Join-Path $root 'GProControl\app.manifest'))"
+1 ICON "$( & $resourcePath (Join-Path $root 'GProControl\Assets\GProControl.ico'))"
+101 RCDATA "$( & $resourcePath $embeddedSetup)"
+"@
+$bootstrapResource += "`r`n" + ((Get-Content -LiteralPath (Join-Path $root 'packaging\launcher\Launcher.rc') | Select-Object -Skip 3) -join "`r`n").Replace('G Pro Control Launcher','G Pro Control Setup').Replace('GProControl.exe','GProControl-Setup.exe')
+[IO.File]::WriteAllText((Join-Path $nativeOutput 'SetupBootstrap.rc'), $bootstrapResource, [Text.UTF8Encoding]::new($false))
+& $env:ComSpec /c (Join-Path $root 'packaging\launcher\build-setup.cmd') $visualStudio $nativeOutput $embeddedSetup $installer
+if ($LASTEXITCODE -ne 0) { throw 'Elevated setup bootstrapper build failed.' }
 $report = [pscustomobject]@{
     Version=$version
     Installer=$installer

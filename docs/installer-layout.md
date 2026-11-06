@@ -38,6 +38,19 @@ WinUI 原生语言 MUI、PRI 和运行库依赖原始相对路径；直接移动
 卸载只清理本安装对应的缓存，并且仅当登录任务指向本安装启动器时才删除它。
 用户设置 `%LocalAppData%\Memories_white\GProControl\settings.json` 保留。
 
+## 安装入口与权限
+
+0.11.1 增加带 `requireAdministrator` 清单的原生安装入口，Windows 在运行入口代码前
+先处理 UAC 提升，再将内嵌的 Inno 安装器写到 ProgramData 下随机命名的临时目录。
+目录仅 Administrators/System 可访问，安装结束删除内嵌程序和临时目录，并传回安装退出码。
+
+原因是 Inno 的外层 SetupLdr 使用 `asInvoker`：先创建用户临时目录，再由内部 Setup
+根据 `PrivilegesRequired=admin` 提升。0.11.0 在普通权限无法写入 Temp 的环境会提前报错。
+参考 [Inno 官方安全说明](https://jrsoftware.org/is6help/topic_securitymeasures.htm)。
+
+`scripts/test-setup-elevation.ps1` 直接读取最终安装包的 PE 资源，确认最外层入口要求管理员
+权限，且内嵌安装器存在；这项检查也包含在完整安装验收中。
+
 ## 构建
 
 需要 .NET 10 SDK、MSVC x64 工具链和项目内 `.tools/InnoSetup/ISCC.exe`。
