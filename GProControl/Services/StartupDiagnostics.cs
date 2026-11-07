@@ -4,6 +4,7 @@ namespace GProControl.Services;
 
 internal static class StartupDiagnostics
 {
+    private static readonly object WriteLock = new();
     private static readonly string LogDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "GProControl",
@@ -26,11 +27,37 @@ internal static class StartupDiagnostics
                 text.AppendLine().Append(exception);
             }
 
-            File.AppendAllText(LogPath, text.AppendLine().ToString());
+            lock (WriteLock)
+            {
+                File.AppendAllText(LogPath, text.AppendLine().ToString());
+            }
         }
         catch
         {
             // Diagnostics must never prevent the control center from opening.
         }
+    }
+
+    internal static async Task ExportAsync(string destination, string version)
+    {
+        if (string.Equals(Path.GetFullPath(destination), LogPath, StringComparison.OrdinalIgnoreCase))
+            throw new IOException("请选择其他文件名，避免覆盖正在写入的运行日志。");
+
+        string contents;
+        await using (var source = new FileStream(LogPath, FileMode.Open, FileAccess.Read,
+            FileShare.ReadWrite, bufferSize: 4096, useAsync: true))
+        using (var reader = new StreamReader(source, Encoding.UTF8))
+        {
+            contents = await reader.ReadToEndAsync();
+        }
+
+        var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrEmpty(profile))
+            contents = contents.Replace(profile, "%USERPROFILE%", StringComparison.OrdinalIgnoreCase);
+
+        string header = $"G Pro Control {version}{Environment.NewLine}"
+            + $"Exported: {DateTimeOffset.Now:O}{Environment.NewLine}"
+            + $"Windows build: {Environment.OSVersion.Version}{Environment.NewLine}{Environment.NewLine}";
+        await File.WriteAllTextAsync(destination, header + contents, Encoding.UTF8);
     }
 }

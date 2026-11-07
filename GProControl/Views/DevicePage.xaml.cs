@@ -1,4 +1,5 @@
 using GProControl.Protocol;
+using GProControl.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -135,6 +136,7 @@ public sealed partial class DevicePage : Page
         ApplyState();
         DeviceSwitchStatus.Text = "正在应用并确认设备状态…";
         var result = await App.HardwareControl.SetDeviceSwitchAsync(device, hardwareEnabled);
+        StartupDiagnostics.Write($"Device switch: device={device}, enabled={hardwareEnabled}, verified={result.Verified}, readback={result.ReadbackValue}. {result.Message}");
         _switchBusy = false;
         if (!_loaded)
         {

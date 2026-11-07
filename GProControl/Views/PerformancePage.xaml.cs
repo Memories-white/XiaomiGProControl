@@ -1,5 +1,6 @@
 using GProControl.Models;
 using GProControl.Protocol;
+using GProControl.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -156,6 +157,7 @@ public sealed partial class PerformancePage : Page
         SetModeButtonsEnabled(false);
         CurrentModeText.Text = "正在通过原厂服务写入并读回…";
         var result = await App.HardwareControl.SetPerformanceModeAsync(mode.Value.ServiceValue);
+        StartupDiagnostics.Write($"Performance mode: requested={mode.Value.Name}, verified={result.Verified}, readback={result.ReadbackValue}. {result.Message}");
         if (!_loaded)
         {
             return;
@@ -198,6 +200,7 @@ public sealed partial class PerformancePage : Page
         ScreenAccelerationToggle.IsEnabled = false;
         ScreenAccelerationStatus.Text = "正在通过原厂服务提交屏幕加速设置…";
         var result = await App.HardwareControl.SetScreenAccelerationAsync(requested);
+        StartupDiagnostics.Write($"Screen acceleration: requested={requested}, verified={result.Verified}, readback={result.ReadbackValue}. {result.Message}");
         if (!_loaded)
         {
             return;

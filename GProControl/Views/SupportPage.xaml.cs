@@ -1,4 +1,5 @@
 using GProControl.Services;
+using Microsoft.Windows.Storage.Pickers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.ApplicationModel.DataTransfer;
@@ -39,5 +40,39 @@ public sealed partial class SupportPage : Page
         }
         catch(Exception exception) {StatusBar.Title="复制失败"; StatusBar.Message=exception.Message; StatusBar.Severity=InfoBarSeverity.Error;}
         finally {CopyDiagnosticsButton.IsEnabled=true;}
+    }
+
+    private async void ExportLog_Click(object sender, RoutedEventArgs e)
+    {
+        if (App.MainWindow is not { } window) return;
+        ExportLogButton.IsEnabled = false;
+        try
+        {
+            var picker = new FileSavePicker(window.AppWindow.Id)
+            {
+                SuggestedFileName = $"GProControl-{DateTime.Now:yyyyMMdd-HHmmss}",
+                SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+                DefaultFileExtension = ".txt",
+                FileTypeChoices = { { "文本日志", new List<string> { ".txt" } } }
+            };
+            var selected = await picker.PickSaveFileAsync();
+            if (selected is null) return;
+
+            await StartupDiagnostics.ExportAsync(selected.Path, _version);
+            StatusBar.Title = "运行日志已导出";
+            StatusBar.Message = selected.Path;
+            StatusBar.Severity = InfoBarSeverity.Success;
+        }
+        catch (Exception exception)
+        {
+            StartupDiagnostics.Write("Runtime log export failed.", exception);
+            StatusBar.Title = "运行日志导出失败";
+            StatusBar.Message = exception is FileNotFoundException ? "暂时没有可导出的运行日志。" : exception.Message;
+            StatusBar.Severity = InfoBarSeverity.Error;
+        }
+        finally
+        {
+            ExportLogButton.IsEnabled = true;
+        }
     }
 }

@@ -259,12 +259,15 @@ internal sealed partial class B21HidClient
             {
                 await ExchangeAsync(2, target, timeout, cancellationToken).ConfigureAwait(false);
                 var applied = await ExchangeAsync(1, null, timeout, cancellationToken).ConfigureAwait(false);
-                RequireEffectState(applied, target);
+                // B21 can retain the previous brightness while accepting the effect.
+                // Only accept that specific alternative for saved effects.
+                byte? retainedBrightness = enabled && persist && original[8] <= 3 ? original[8] : null;
+                RequireEffectState(applied, target, retainedBrightness);
                 if (persist)
                 {
                     await ExchangeAsync(5, null, timeout, cancellationToken).ConfigureAwait(false);
                     applied = await ExchangeAsync(1, null, timeout, cancellationToken).ConfigureAwait(false);
-                    RequireEffectState(applied, target);
+                    RequireEffectState(applied, target, retainedBrightness);
                 }
                 KeyboardLightingCodec.TryParseCmd1Reply(applied, DateTime.Now, out var confirmed);
                 return confirmed!;
@@ -279,12 +282,12 @@ internal sealed partial class B21HidClient
         finally { _commandLock.Release(); }
     }
 
-    private static void RequireEffectState(byte[] actual, byte[] target)
+    private static void RequireEffectState(byte[] actual, byte[] target, byte? retainedBrightness = null)
     {
         var fields = new List<int> {4, 5, 6, 12};
         // Firefly exposes no brightness control in the vendor UI; firmware retains
         // the previous brightness byte rather than accepting a new value here.
-        if (target[5] != 10) fields.Add(8);
+        if (target[5] != 10 && actual[8] != retainedBrightness) fields.Add(8);
         if (target[5] is 1 or 6 or 7) fields.Add(7);
         if (target[5] is 1 or 3 or 6 or 7 or 8) fields.Add(9);
         if (target[5] is 3 or 6 or 8) fields.Add(11);

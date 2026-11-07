@@ -83,8 +83,15 @@ try
         {
             foreach (var preset in GProControl.Models.LightingPresetCatalog.All.Where(p => p.IsHardwarePreset))
             {
-                await client.ApplyEffectAsync(preset.Profile, true, timeout);
-                Console.WriteLine($"factory-preset={preset.EffectId}; verified=True");
+                var applied = await client.ApplyEffectAsync(preset.Profile, true, timeout);
+                Console.WriteLine($"factory-preset={preset.EffectId}; verified=True; brightness={preset.Profile.BrightnessCode}->{applied.BrightnessCode}");
+            }
+            foreach (byte brightness in new byte[] {0, 1, 2, 3})
+            foreach (byte effect in new byte[] {1, 2, 8})
+            {
+                var applied = await client.ApplyEffectAsync(new(effect, 0, 0, brightness, 2,
+                    effect == 8 ? (byte)1 : (byte)0), true, timeout);
+                Console.WriteLine($"transition-effect={effect}; brightness={brightness}->{applied.BrightnessCode}");
             }
             foreach (byte effect in new byte[] {2,3,5,10,11})
             foreach (byte palette in new byte[] {0,1,2,3,4,5,6})

@@ -7,6 +7,7 @@
     <RootNamespace>GProControl.LightingProbe</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\..\GProControl\Services\StartupDiagnostics.cs" Link="Services\StartupDiagnostics.cs" />
     <Compile Include="..\..\GProControl\Services\ScreenLightingSampler.cs" Link="Services\ScreenLightingSampler.cs" />
     <Compile Include="..\..\GProControl\Services\B21RealtimeSession.cs" Link="Services\B21RealtimeSession.cs" />
     <Compile Include="..\..\GProControl\Models\KeyboardPixel.cs" Link="Models\KeyboardPixel.cs" />

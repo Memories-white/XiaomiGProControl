@@ -68,7 +68,12 @@ public sealed partial class LightingPage : Page
                 : "选择效果后点击应用。常规效果保存在键盘；光影与光音效果在软件运行期间生效。",
                 _approved ? InfoBarSeverity.Success : InfoBarSeverity.Warning);
         }
-        catch (Exception exception) { _approved = false; Notice("灯效读取失败", exception.Message, InfoBarSeverity.Error); }
+        catch (Exception exception)
+        {
+            _approved = false;
+            StartupDiagnostics.Write("Keyboard lighting read failed.", exception);
+            Notice("灯效读取失败", exception.Message, InfoBarSeverity.Error);
+        }
         finally { _busy = false; UpdateControls(); }
     }
     private void ApplyState(KeyboardLightingState state)
@@ -301,6 +306,7 @@ public sealed partial class LightingPage : Page
         try {
             var effect = ((LightingEffectChoice)EffectSelector.SelectedItem).Id;
             var profile = SelectedProfile();
+            StartupDiagnostics.Write($"Lighting requested: effect={effect}, palette={profile.PaletteCode}, brightness={profile.BrightnessCode}, speed={profile.SpeedCode}, direction={profile.DirectionCode}, length={profile.LengthCode}.");
             if (effect is 21 or 22) {
                 var options=new AmbientLightingOptions(AudioSourceBox.SelectedIndex,AudioStyleBox.SelectedIndex,AudioPaletteBox.SelectedIndex,(int)ScreenSamplesSlider.Value,OutputModeBox.SelectedIndex==1,SpectrumDirectionBox.SelectedIndex);
                 await App.AmbientLighting.StartAsync(effect, profile.BrightnessCode, profile.ColorsHex,options);
@@ -309,11 +315,21 @@ public sealed partial class LightingPage : Page
             } else {
                 await App.AmbientLighting.StopAsync();
                 var applied = await _client.ApplyEffectAsync(profile, true, TimeSpan.FromSeconds(2));
+                StartupDiagnostics.Write($"Keyboard lighting readback: effect={applied.EffectCode}, palette={applied.PaletteCode}, brightness={applied.BrightnessCode}, speed={applied.SpeedCode}.");
                 Remember(applied); ApplyState(applied);
-                Notice("灯效已应用", "已从键盘读回确认，并保存设置。", InfoBarSeverity.Success);
+                if (profile.EffectCode != 10 && applied.BrightnessCode != profile.BrightnessCode)
+                    Notice("灯效已应用，键盘保留原亮度",
+                        $"请求 {profile.BrightnessCode + 1} 档，键盘读回 {applied.BrightnessCode + 1} 档。已保存实际设置。",
+                        InfoBarSeverity.Warning);
+                else
+                    Notice("灯效已应用", "已从键盘读回确认，并保存设置。", InfoBarSeverity.Success);
             }
         }
-        catch (Exception exception) { Notice("灯效应用失败", exception.Message, InfoBarSeverity.Error); }
+        catch (Exception exception)
+        {
+            StartupDiagnostics.Write("Lighting application failed.", exception);
+            Notice("灯效应用失败", exception.Message, InfoBarSeverity.Error);
+        }
         finally { _busy = false; UpdateControls(); }
     }
     private async void Power_Click(object sender, RoutedEventArgs e)
@@ -332,7 +348,11 @@ public sealed partial class LightingPage : Page
             Remember(applied); ApplyState(applied);
             Notice(enabled ? "键盘灯已开启" : "键盘灯已关闭", "设置已保存。", InfoBarSeverity.Success);
         }
-        catch (Exception exception) { Notice("灯效开关失败", exception.Message, InfoBarSeverity.Error); }
+        catch (Exception exception)
+        {
+            StartupDiagnostics.Write("Keyboard lighting power change failed.", exception);
+            Notice("灯效开关失败", exception.Message, InfoBarSeverity.Error);
+        }
         finally { _busy = false; UpdateControls(); }
     }
     private async void StopAmbient_Click(object sender, RoutedEventArgs e)

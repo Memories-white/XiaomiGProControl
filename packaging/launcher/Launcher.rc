@@ -2,8 +2,8 @@
 1 ICON "../../GProControl/Assets/GProControl.ico"
 1 RT_MANIFEST "../../GProControl/app.manifest"
 1 VERSIONINFO
- FILEVERSION 0,13,1,0
- PRODUCTVERSION 0,13,1,0
+ FILEVERSION 0,13,2,0
+ PRODUCTVERSION 0,13,2,0
  FILETYPE VFT_APP
 BEGIN
  BLOCK "StringFileInfo"
@@ -12,9 +12,9 @@ BEGIN
   BEGIN
    VALUE "CompanyName", "Memories_white"
    VALUE "FileDescription", "G Pro Control Launcher"
-   VALUE "FileVersion", "0.13.1"
+   VALUE "FileVersion", "0.13.2"
    VALUE "ProductName", "G Pro Control"
-   VALUE "ProductVersion", "0.13.1"
+   VALUE "ProductVersion", "0.13.2"
    VALUE "OriginalFilename", "GProControl.exe"
   END
  END

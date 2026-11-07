@@ -22,6 +22,8 @@
                     </ItemsControl>
                     <Button x:Name="CopyDiagnosticsButton" Content="复制诊断摘要" Click="CopyDiagnostics_Click" />
                     <TextBlock Text="包含软件版本、原厂组件状态及设备参数；不包含序列号，不会自动发送。" FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+                    <Button x:Name="ExportLogButton" Content="导出运行日志" Click="ExportLog_Click" />
+                    <TextBlock Text="将启动、控制操作和错误记录保存为文本文件，便于排查问题。" FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource DashboardCardStyle}">

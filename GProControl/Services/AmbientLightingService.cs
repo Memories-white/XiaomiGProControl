@@ -82,7 +82,11 @@ internal sealed class AmbientLightingService(Func<bool> canWrite,Func<bool>? can
                     }
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
-                catch (Exception exception) { LastError = exception.Message; }
+                catch (Exception exception)
+                {
+                    LastError = exception.Message;
+                    StartupDiagnostics.Write($"Dynamic lighting stopped with an error: effect={effect}, perKey={options.PerKeyOutput}.", exception);
+                }
                 finally
                 {
                     audio?.Dispose();
@@ -90,7 +94,11 @@ internal sealed class AmbientLightingService(Func<bool> canWrite,Func<bool>? can
                         if(realtime is not null) await realtime.DisposeAsync();
                         else if(original is not null) await client.RestoreCapturedAsync(original, TimeSpan.FromSeconds(2));
                     }
-                    catch (Exception exception) { LastError = "灯效恢复未确认：" + exception.Message; }
+                    catch (Exception exception)
+                    {
+                        LastError = "灯效恢复未确认：" + exception.Message;
+                        StartupDiagnostics.Write("Dynamic lighting restore failed.", exception);
+                    }
                     ActiveEffect = null;
                     SpectrumBands = new float[17];
                     MatrixPreview=[];
