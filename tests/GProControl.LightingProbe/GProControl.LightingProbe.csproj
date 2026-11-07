@@ -7,6 +7,8 @@
     <RootNamespace>GProControl.LightingProbe</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\..\GProControl\Services\AudioSpectrumReader.cs" Link="Services\AudioSpectrumReader.cs" />
+    <Compile Include="..\..\GProControl\Models\AmbientLightingOptions.cs" Link="Models\AmbientLightingOptions.cs" />
     <Compile Include="..\..\GProControl\Models\LightingPreset.cs" Link="Models\LightingPreset.cs" />
     <Compile Include="..\..\GProControl\Services\AmbientLightingService.cs" Link="Services\AmbientLightingService.cs" />
     <Compile Include="..\..\GProControl\Models\LightingProfile.cs" Link="Models\LightingProfile.cs" />

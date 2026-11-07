@@ -59,20 +59,24 @@ try
         var ambient = new AmbientLightingService(() => true);
         try
         {
-            foreach (var mode in new[] {21,22})
+            foreach (var (mode,options) in new[] {
+                (21,new GProControl.Models.AmbientLightingOptions()),
+                (21,new GProControl.Models.AmbientLightingOptions(AudioStyle:1,AudioPalette:3)),
+                (22,new GProControl.Models.AmbientLightingOptions(ScreenSamples:1)),
+                (22,new GProControl.Models.AmbientLightingOptions(ScreenSamples:5))})
             {
-                await ambient.StartAsync(mode, 3, "007F7F");
+                await ambient.StartAsync(mode, 3, "007F7F",options);
                 await Task.Delay(1400);
                 if (ambient.ActiveEffect != mode || ambient.LastError is not null)
                     throw new InvalidOperationException($"Ambient mode {mode} failed: {ambient.LastError}");
                 await ambient.StopAsync();
                 if (ambient.LastError is not null) throw new InvalidOperationException(ambient.LastError);
-                Console.WriteLine($"ambient={mode}; running=True; stopped=True");
+                Console.WriteLine($"ambient={mode}; audio-style={options.AudioStyle}; samples={options.ScreenSamples}; running=True; stopped=True");
             }
         }
         finally { await ambient.StopAsync(); await client.RestoreCapturedAsync(original, TimeSpan.FromSeconds(2)); }
         var final = await client.ReadCommandAsync(1, TimeSpan.FromSeconds(2));
-        if (!final.AsSpan(4,9).SequenceEqual(original.AsSpan(4,9))) throw new InvalidOperationException("Ambient state was not restored.");
+        if (!final.AsSpan(4,9).SequenceEqual(original.AsSpan(4,9)) || !final.AsSpan(15,48).SequenceEqual(original.AsSpan(15,48))) throw new InvalidOperationException("Ambient state was not restored.");
         Console.WriteLine("ambient-restored=True");
         return 0;
     }

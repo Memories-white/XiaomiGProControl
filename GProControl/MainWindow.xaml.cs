@@ -18,6 +18,8 @@ public sealed partial class MainWindow : Window
     private readonly Dictionary<string, Type> _pages = new()
     {
         ["dashboard"] = typeof(DashboardPage),
+        ["details"] = typeof(DetailsPage),
+        ["support"] = typeof(SupportPage),
         ["performance"] = typeof(PerformancePage),
         ["lighting"] = typeof(LightingPage),
         ["device"] = typeof(DevicePage),
@@ -170,6 +172,32 @@ public sealed partial class MainWindow : Window
             }
             catch (Exception exception) { StartupDiagnostics.Write("Factory preset UI smoke failed.", exception); }
             finally { Close(); }
+        }
+        if (Environment.GetCommandLineArgs().Contains("--support-details-smoke"))
+        {
+            try
+            {
+                NavigateTo("details");
+                var page=(DetailsPage)ContentFrame.Content;
+                var ready=(Button)page.FindName("CopyButton");
+                for(var attempt=0;attempt<100 && !ready.IsEnabled;attempt++) await Task.Delay(200);
+                var sections=(ItemsControl)page.FindName("SectionList");
+                var serial=(TextBlock)page.FindName("SerialText");
+                if(!ready.IsEnabled || sections.Items.Count<8 || !serial.Text.StartsWith("隐藏"))
+                    throw new InvalidOperationException("Details page data or serial privacy did not initialize.");
+                var count=sections.Items.Count;
+                NavigateTo("support");
+                var support=(SupportPage)ContentFrame.Content;
+                var links=(ItemsControl)support.FindName("LinkList");
+                if(links.Items.Count!=6 || Navigation.IsBackButtonVisible!=NavigationViewBackButtonVisible.Collapsed)
+                    throw new InvalidOperationException("Support page links or navigation differ.");
+                NavigateTo("details"); await Task.Delay(200);
+                if(!((TextBlock)((DetailsPage)ContentFrame.Content).FindName("SerialText")).Text.StartsWith("隐藏"))
+                    throw new InvalidOperationException("Serial reveal was retained across navigation.");
+                StartupDiagnostics.Write($"Support/details UI smoke: sections={count}; links=6; serialHidden=True; rootBackHidden=True; navigation=True");
+            }
+            catch(Exception exception) {StartupDiagnostics.Write("Support/details UI smoke failed.",exception);}
+            finally {Close();}
         }
     }
 

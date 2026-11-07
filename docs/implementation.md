@@ -129,3 +129,17 @@ pwsh -File scripts/build-installer.ps1 -InnoCompiler 'C:\Tools\InnoSetup\ISCC.ex
 | `bin/`、`obj/`、`artifacts/` | 否 | 可重新生成的构建和打包产物 |
 
 仓库不携带用户本机的 `HANDOFF.md`。公开阅读入口是 README 及本文档导航。
+
+## 参数、服务与音频扩展
+
+`HardwareDetailsService` 异步读取 WMI 参数并缓存，`DetailsPage` 提供序列号显隐及排除序列号的参数报告。
+`SupportPage` 和 `SupportLinks` 管理官方服务入口、用户中心与本地诊断摘要，见 [服务与参数](service-and-details.md)。
+`AudioSpectrumReader` 在独立 MTA 线程维护 WASAPI 采样，`AudioSpectrumDsp` 做 PCM 解码及 FFT；
+`AmbientLightingOptions` 保存采集源、呈现方式、渐变和屏幕采样密度。动画仍通过已验证的统一 RGB 输出。
+
+```powershell
+dotnet run --project tests/GProControl.AudioSpectrumTests -c Release
+dotnet run --project tests/GProControl.DetailsSmokeTests -c Release
+```
+
+默认离线测试不会播放或采集音频，也不会读取本机序列号。音频 `--tone` 是显式的真实播放采样验收。

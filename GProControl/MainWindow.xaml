@@ -34,6 +34,9 @@
                         SelectionChanged="Navigation_SelectionChanged">
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="概览" Tag="dashboard" Icon="Home" />
+                <NavigationViewItem Content="详细参数" Tag="details">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE9CE;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
                 <NavigationViewItem Content="性能" Tag="performance">
                     <NavigationViewItem.Icon><FontIcon Glyph="&#xE9D9;" /></NavigationViewItem.Icon>
                 </NavigationViewItem>
@@ -45,6 +48,9 @@
                 </NavigationViewItem>
             </NavigationView.MenuItems>
             <NavigationView.FooterMenuItems>
+                <NavigationViewItem Content="我的服务" Tag="support">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE8F2;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
                 <NavigationViewItem Content="设置" Tag="settings" Icon="Setting" />
             </NavigationView.FooterMenuItems>
             <Frame x:Name="ContentFrame" Navigated="ContentFrame_Navigated" />

@@ -10,7 +10,7 @@
 
 A clean interface, validated hardware protocols, and documented reverse engineering.
 
-![Version](https://img.shields.io/badge/preview-0.12.3-3b82f6?style=flat-square)
+![Version](https://img.shields.io/badge/preview-0.12.4-3b82f6?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Windows_11_x64-64748b?style=flat-square)
 ![Stack](https://img.shields.io/badge/C%23-.NET_10_%2B_WinUI_3-14b8a6?style=flat-square)
 
@@ -38,6 +38,8 @@ it does not replace BIOS or EC firmware.
 
 | Feature | Status | Implementation |
 | --- | --- | --- |
+| Detailed specifications | Implemented and validated | Local CPU/GPU/RAM/disks/displays/BIOS/Windows data; reports exclude the device serial number |
+| My services | Implemented | Official manual, after-sales policy, service locations, support, drivers and account links; local diagnostic summary |
 | Four performance presets | Validated on hardware | Quiet / Balanced / Turbo / Full Speed; readback after writes |
 | CPU temperature and two fan speeds | Validated on hardware | Vendor EC `0x0900`, administrator-only WMI reads |
 | GPU telemetry | Implemented | NVML utilization, temperature, power, and VRAM |
@@ -46,13 +48,13 @@ it does not replace BIOS or EC firmware.
 | Fn / Windows key lock / touchpad | Implemented and validated | Firmware state is read when returning to the page and after writes; Windows key round-trip and navigation checks passed |
 | GPU output mode | Implemented | `0=hybrid`, `1=discrete GPU`; read/write confirmation, reboot required |
 | Standard keyboard lighting | Validated on hardware | Nine hardware effects and custom RGB lighting; applicable palette, direction, brightness, speed, and length controls |
-| Screen / audio lighting | Implemented and validated | Primary-screen average color or system playback level drives uniform keyboard color while the app runs; differs from vendor per-key mapping and spectrum effects |
+| Screen / audio lighting | Implemented and validated | Screen-average color; playback/microphone source, 17-band FFT preview and four gradient palettes drive uniform RGB. Per-key output remains unfinished |
 | Startup restoration | Implemented | Performance mode and saved keyboard lighting; full reboot validation remains pending |
 | Close prompt and system tray | Implemented | Exit / run in background / cancel; optional remembered choice, editable in Settings |
 | Start with Windows | Implemented | Elevated task at current-user logon; optional background startup |
 | WLAN acceleration | Status reading | Uses the vendor Xiaomi router acceleration status; no forced toggle |
 | Custom fan curves / fixed RPM | Not implemented | A safely verifiable write protocol has not been established |
-| Per-key image mapping / audio spectrum / chassis lighting | Not implemented | Current screen and audio effects use uniform keyboard color; the vendor's full visuals are not reproduced |
+| Per-key image mapping / keyboard spectrum bars / chassis lighting | Not implemented | Current screen and audio effects use uniform keyboard color; the vendor's full visuals are not reproduced |
 
 Hardware validation applies to the recorded machine and software versions. It does not establish
 compatibility with every configuration. See the [validation record](docs/verification.md) for the boundaries.
@@ -85,8 +87,8 @@ compatibility with every configuration. See the [validation record](docs/verific
 
 ### Installation
 
-Download `GProControl-0.12.3-Setup-x64.exe` from the
-[v0.12.3 prerelease](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.12.3).
+Download `GProControl-0.12.4-Setup-x64.exe` from the
+[v0.12.4 prerelease](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.12.4).
 Its English/Chinese Inno Setup wizard bundles the .NET and Windows App SDK runtimes.
 Installer binaries are distributed as release assets and excluded from Git source history.
 

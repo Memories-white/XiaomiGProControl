@@ -10,7 +10,7 @@
 
 Eine übersichtliche Oberfläche, geprüfte Hardwareprotokolle und nachvollziehbare Reverse-Engineering-Dokumentation.
 
-![Version](https://img.shields.io/badge/preview-0.12.3-3b82f6?style=flat-square)
+![Version](https://img.shields.io/badge/preview-0.12.4-3b82f6?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Windows_11_x64-64748b?style=flat-square)
 ![Stack](https://img.shields.io/badge/C%23-.NET_10_%2B_WinUI_3-14b8a6?style=flat-square)
 
@@ -38,6 +38,8 @@ diese Notebookfamilie; die Anwendung ersetzt keine BIOS- oder EC-Firmware.
 
 | Funktion | Status | Umsetzung |
 | --- | --- | --- |
+| Technische Daten | Implementiert und geprüft | Lokale CPU/GPU/RAM/Laufwerk/Display/BIOS/Windows-Daten; Berichte ohne Geräteseriennummer |
+| Meine Dienste | Implementiert | Offizielle Handbücher, Servicebedingungen, Standorte, Support, Treiber und Konto; lokale Diagnoseübersicht |
 | Vier Leistungsprofile | An Hardware validiert | Leise / Ausgewogen / Turbo / Volle Leistung; Rücklesen nach Schreibzugriffen |
 | CPU-Temperatur und zwei Lüfterdrehzahlen | An Hardware validiert | Hersteller-EC `0x0900`, lesender WMI-Zugriff mit Administratorrechten |
 | GPU-Messwerte | Implementiert | NVML: Auslastung, Temperatur, Leistung und VRAM |
@@ -46,7 +48,7 @@ diese Notebookfamilie; die Anwendung ersetzt keine BIOS- oder EC-Firmware.
 | Fn / Windows-Tastensperre / Touchpad | Implementiert und validiert | Firmwarestatus bei Rückkehr zur Seite und nach Schreibzugriffen lesen; Windows-Tasten-Rundlauf und Seitennavigation geprüft |
 | GPU-Ausgabemodus | Implementiert | `0=Hybrid`, `1=direkte Ausgabe über die dedizierte GPU`; Lese-/Schreibbestätigung, Neustart erforderlich |
 | Normale Tastaturbeleuchtung | An Hardware validiert | Neun Hardwareeffekte und frei wählbare RGB-Beleuchtung; jeweils unterstützte Palette, Richtung, Helligkeit, Geschwindigkeit und Länge |
-| Bildschirm- / Audiobeleuchtung | Implementiert und validiert | Durchschnittsfarbe des Hauptbildschirms oder Systemwiedergabepegel steuern eine einheitliche Tastaturfarbe während der Laufzeit; abweichend von der Einzel­tastenabbildung und den Spektraleffekten des Herstellers |
+| Bildschirm- / Audiobeleuchtung | Implementiert und geprüft | Bildschirmmittelwert, Wiedergabe/Mikrofon, 17-Band-Vorschau und vier Farbverläufe; Tastaturausgabe weiterhin einheitliches RGB |
 | Wiederherstellung beim Start | Implementiert | Leistungsprofil und gespeicherte Tastaturbeleuchtung; vollständige Neustartprüfung noch ausstehend |
 | Schließdialog und Infobereich | Implementiert | Beenden / im Hintergrund ausführen / abbrechen; Auswahl optional merken und in den Einstellungen ändern |
 | Mit Windows starten | Implementiert | Aufgabe mit erhöhten Rechten bei Anmeldung des aktuellen Benutzers; optionaler Hintergrundstart |
@@ -85,8 +87,8 @@ keine Kompatibilität mit jeder Konfiguration. Die Grenzen stehen im [Validierun
 
 ### Installation
 
-Die aktuelle Vorschau heißt `GProControl-0.12.3-Setup-x64.exe` und steht in der
-[Vorabveröffentlichung v0.12.3](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.12.3) bereit.
+Die aktuelle Vorschau heißt `GProControl-0.12.4-Setup-x64.exe` und steht in der
+[Vorabveröffentlichung v0.12.4](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.12.4) bereit.
 Der englische/chinesische Inno-Setup-Assistent enthält die .NET- und Windows-App-SDK-Laufzeitumgebungen.
 Installerdateien gehören zu den Release-Anhängen und werden nicht im Git-Quellverlauf gespeichert.
 

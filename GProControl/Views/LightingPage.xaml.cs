@@ -10,19 +10,28 @@ public sealed partial class LightingPage : Page
     private KeyboardLightingState? _state;
     private bool _busy, _updating, _loaded, _approved;
     private int _parameterEffect = -1;
+    private readonly DispatcherTimer _previewTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     public LightingPage()
     {
         InitializeComponent();
         _updating = true; EffectSelector.ItemsSource = LightingEffectChoice.All;
         PresetList.ItemsSource = LightingPresetCatalog.All; _updating = false;
+        AudioPaletteBox.ItemsSource=LightingPresetCatalog.AudioPalettes;
+        var options=App.Settings.Current.AmbientLighting;
+        if(options is null || !options.IsValid) options=new();
+        AudioSourceBox.SelectedIndex=options.AudioSource; AudioStyleBox.SelectedIndex=options.AudioStyle;
+        AudioPaletteBox.SelectedIndex=options.AudioPalette; ScreenSamplesSlider.Value=options.ScreenSamples;
+        _previewTimer.Tick += (_,_) => SpectrumList.ItemsSource=App.AmbientLighting.SpectrumBands.Select(band => (double)Math.Max(1,band*55)).ToArray();
         Loaded += async (_, _) => {
             _loaded = true;
+            _previewTimer.Start();
             App.AmbientLighting.Changed += OnAmbientChanged;
             App.HardwareControl.StateChanged += OnHardwareChanged;
             await RefreshAsync();
         };
         Unloaded += (_, _) => {
             _loaded = false;
+            _previewTimer.Stop();
             App.AmbientLighting.Changed -= OnAmbientChanged;
             App.HardwareControl.StateChanged -= OnHardwareChanged;
         };
@@ -71,6 +80,15 @@ public sealed partial class LightingPage : Page
             var rgb = Convert.FromHexString(saved.ColorsHex);
             EffectColor.Color = Windows.UI.Color.FromArgb(255, (byte)(rgb[0]*2), (byte)(rgb[1]*2), (byte)(rgb[2]*2));
         }
+        if(App.AmbientLighting.ActiveEffect is not null)
+        {
+            var options=App.AmbientLighting.Options;
+            AudioSourceBox.SelectedIndex=options.AudioSource; AudioStyleBox.SelectedIndex=options.AudioStyle;
+            AudioPaletteBox.SelectedIndex=options.AudioPalette; ScreenSamplesSlider.Value=options.ScreenSamples;
+            BrightnessComboBox.SelectedIndex=App.AmbientLighting.Brightness;
+            var rgb=Convert.FromHexString(App.AmbientLighting.SelectedColor);
+            EffectColor.Color=Windows.UI.Color.FromArgb(255,(byte)(rgb[0]*2),(byte)(rgb[1]*2),(byte)(rgb[2]*2));
+        }
         PowerValueText.Text = state.IsEnabled ? "已开启" : "已关闭";
         PowerButton.Content = state.IsEnabled ? "关闭" : "开启";
         LightingPreviewText.Text = state.IsEnabled ? (EffectSelector.SelectedItem as LightingEffectChoice)?.Name ?? "当前灯效" : "键盘灯已关闭";
@@ -100,6 +118,8 @@ public sealed partial class LightingPage : Page
         BrightnessComboBox.SelectedIndex = profile.BrightnessCode;
         SpeedComboBox.SelectedIndex = Math.Max(0, profile.SpeedCode-1);
         LengthComboBox.SelectedIndex = Math.Min(profile.LengthCode, LengthComboBox.Items.Count-1);
+        if(preset.EffectId==21) {AudioSourceBox.SelectedIndex=0; AudioStyleBox.SelectedIndex=1; AudioPaletteBox.SelectedIndex=0;}
+        if(preset.EffectId==22) ScreenSamplesSlider.Value=4;
         if (profile.ColorsHex.Length == 6)
         {
             var rgb=Convert.FromHexString(profile.ColorsHex);
@@ -155,8 +175,11 @@ public sealed partial class LightingPage : Page
         LengthComboBox.IsEnabled = writable && effect is 3 or 6 or 8;
         EffectColor.Visibility = effect is 21 or 23 ? Visibility.Visible : Visibility.Collapsed;
         EffectColor.IsEnabled = writable;
+        AudioOptionsPanel.Visibility=effect==21 ? Visibility.Visible : Visibility.Collapsed;
+        ScreenOptionsPanel.Visibility=effect==22 ? Visibility.Visible : Visibility.Collapsed;
+        AudioSourceBox.IsEnabled=AudioStyleBox.IsEnabled=AudioPaletteBox.IsEnabled=ScreenSamplesSlider.IsEnabled=writable;
         EffectDescription.Text = effect switch {
-            21 => "随系统播放音量改变选定颜色的亮度；退出软件后恢复常规灯效。",
+            21 => "支持系统声音或麦克风、17 段频谱预览与混色；键盘仍为整片统一色。退出后恢复原灯效。",
             22 => "根据主屏幕平均颜色实时调整键盘，不保存或上传屏幕画面；退出后恢复常规灯效。",
             23 => "使用自选颜色常亮，可调整亮度。",
             _ => "不适用于当前效果的参数已停用。应用后会保存，并记住下次启动要恢复的配置。"
@@ -200,7 +223,9 @@ public sealed partial class LightingPage : Page
             var effect = ((LightingEffectChoice)EffectSelector.SelectedItem).Id;
             var profile = SelectedProfile();
             if (effect is 21 or 22) {
-                await App.AmbientLighting.StartAsync(effect, profile.BrightnessCode, profile.ColorsHex);
+                var options=new AmbientLightingOptions(AudioSourceBox.SelectedIndex,AudioStyleBox.SelectedIndex,AudioPaletteBox.SelectedIndex,(int)ScreenSamplesSlider.Value);
+                await App.AmbientLighting.StartAsync(effect, profile.BrightnessCode, profile.ColorsHex,options);
+                App.Settings.Update(value => value.AmbientLighting=options);
                 Notice("动态灯效已启动", "停止动态灯效或退出软件后恢复原来的常规效果。", InfoBarSeverity.Success);
             } else {
                 await App.AmbientLighting.StopAsync();

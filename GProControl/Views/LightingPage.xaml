@@ -101,6 +101,24 @@
                             <ComboBox x:Name="EffectSelector" DisplayMemberPath="Name" HorizontalAlignment="Stretch" SelectionChanged="Effect_Changed" />
                             <TextBlock x:Name="EffectDescription" Opacity="0.6" FontSize="12" TextWrapping="Wrap" />
                             <ColorPicker x:Name="EffectColor" Color="#FF4F8CFF" IsAlphaEnabled="False" IsAlphaSliderVisible="False" IsAlphaTextInputVisible="False" Visibility="Collapsed" />
+                            <StackPanel x:Name="AudioOptionsPanel" Spacing="8" Visibility="Collapsed">
+                                <TextBlock Text="音频采集源" FontWeight="SemiBold" />
+                                <ComboBox x:Name="AudioSourceBox" HorizontalAlignment="Stretch" SelectedIndex="0"><x:String>系统播放声音</x:String><x:String>默认麦克风</x:String></ComboBox>
+                                <TextBlock Text="呈现方式" FontWeight="SemiBold" />
+                                <ComboBox x:Name="AudioStyleBox" HorizontalAlignment="Stretch" SelectedIndex="0"><x:String>音量呼吸 · 自选单色</x:String><x:String>频段混色 · 整键盘统一色</x:String></ComboBox>
+                                <TextBlock Text="原厂频谱配色" FontWeight="SemiBold" />
+                                <ComboBox x:Name="AudioPaletteBox" HorizontalAlignment="Stretch" DisplayMemberPath="Name" SelectedIndex="0" />
+                                <TextBlock Text="频段预览 · 低频 → 高频" FontSize="12" Opacity="0.6" />
+                                <ItemsControl x:Name="SpectrumList">
+                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate><DataTemplate><Grid Height="55" Width="10"><Border Height="{Binding}" VerticalAlignment="Bottom" CornerRadius="3" Background="{ThemeResource AccentFillColorDefaultBrush}" /></Grid></DataTemplate></ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                            <StackPanel x:Name="ScreenOptionsPanel" Spacing="8" Visibility="Collapsed">
+                                <TextBlock Text="屏幕采样密度" FontWeight="SemiBold" />
+                                <Slider x:Name="ScreenSamplesSlider" Minimum="1" Maximum="5" Value="4" StepFrequency="1" />
+                                <TextBlock Text="采样主屏幕网格的平均颜色，不保存屏幕画面。" FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+                            </StackPanel>
                         </StackPanel>
                         <StackPanel Spacing="8">
                             <TextBlock Text="配色 / 方向" FontWeight="SemiBold" />

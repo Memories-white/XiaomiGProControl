@@ -10,11 +10,18 @@ internal sealed class AmbientLightingService(Func<bool> canWrite)
     private Task? _worker;
     public int? ActiveEffect { get; private set; }
     public string? LastError { get; private set; }
+    public AmbientLightingOptions Options { get; private set; } = new();
+    public byte Brightness { get; private set; } = 2;
+    public string SelectedColor { get; private set; } = "7F0000";
+    public float[] SpectrumBands { get; private set; } = new float[17];
     public event Action? Changed;
 
-    public async Task StartAsync(int effect, byte brightness, string color)
+    public async Task StartAsync(int effect, byte brightness, string color, AmbientLightingOptions? options = null)
     {
         if (effect is not 21 and not 22) throw new ArgumentOutOfRangeException(nameof(effect));
+        options ??= new();
+        if (!options.IsValid || brightness>3 || color.Length!=6 || !color.All(Uri.IsHexDigit)
+            || Convert.FromHexString(color).Any(value=>value>127)) throw new ArgumentOutOfRangeException(nameof(options));
         if (!canWrite()) throw new InvalidOperationException("请先启用硬件控制。");
         await _gate.WaitAsync();
         try
@@ -25,17 +32,26 @@ internal sealed class AmbientLightingService(Func<bool> canWrite)
             _cancellation = new CancellationTokenSource();
             LastError = null;
             ActiveEffect = effect;
+            Options = options;
+            Brightness=brightness; SelectedColor=color;
             var cancellation = _cancellation.Token;
             _worker = Task.Run(async () =>
             {
-                CoreAudioPeakReader? audio = null;
+                AudioSpectrumReader? audio = null;
                 try
                 {
-                    if (effect == 21) audio = new CoreAudioPeakReader();
+                    if (effect == 21) audio = new AudioSpectrumReader(options.AudioSource == 1);
                     while (!cancellation.IsCancellationRequested)
                     {
                         if (!canWrite()) break;
-                        var rgb = effect == 22 ? SampleScreen() : AudioColor(audio!.ReadPeak(), color);
+                        string rgb;
+                        if(effect==22) rgb=SampleScreen(options.ScreenSamples);
+                        else
+                        {
+                            var bands=audio!.ReadBands(); SpectrumBands=bands;
+                            rgb=options.AudioStyle==1 ? SpectrumColor(bands,options.AudioPalette)
+                                : AudioColor(bands.Max(),color);
+                        }
                         // Runtime animation is never committed to keyboard flash.
                         await client.ApplyEffectAsync(new LightingProfile(11, 0xFF, 0, brightness, 0, 0, rgb),
                             true, TimeSpan.FromSeconds(2), cancellation, persist:false);
@@ -50,6 +66,7 @@ internal sealed class AmbientLightingService(Func<bool> canWrite)
                     try { await client.RestoreCapturedAsync(original, TimeSpan.FromSeconds(2)); }
                     catch (Exception exception) { LastError = "灯效恢复未确认：" + exception.Message; }
                     ActiveEffect = null;
+                    SpectrumBands = new float[17];
                     Changed?.Invoke();
                 }
             });
@@ -74,17 +91,18 @@ internal sealed class AmbientLightingService(Func<bool> canWrite)
         _cancellation = null;
     }
 
-    internal static string SampleScreen()
+    internal static string SampleScreen(int samples = 4)
     {
+        if(samples is <1 or >5) throw new ArgumentOutOfRangeException(nameof(samples));
         var dc = GetDC(IntPtr.Zero);
         if (dc == IntPtr.Zero) throw new IOException("无法读取屏幕颜色。");
         try
         {
             long r=0, g=0, b=0; var count=0;
             var width = GetSystemMetrics(0); var height = GetSystemMetrics(1);
-            for (var y=1; y<=4; y++) for (var x=1; x<=4; x++)
+            for (var y=1; y<=samples; y++) for (var x=1; x<=samples; x++)
             {
-                var pixel = GetPixel(dc, x*width/5, y*height/5);
+                var pixel = GetPixel(dc, x*width/(samples+1), y*height/(samples+1));
                 if (pixel == uint.MaxValue) continue;
                 r += pixel & 255; g += (pixel>>8)&255; b += (pixel>>16)&255; count++;
             }
@@ -100,49 +118,30 @@ internal sealed class AmbientLightingService(Func<bool> canWrite)
         var level = Math.Clamp(MathF.Sqrt(peak), 0, 1);
         return string.Concat(rgb.Select(value => ((byte)(value*level)).ToString("X2")));
     }
+    internal static string SpectrumColor(float[] bands,int palette)
+    {
+        // The physical output is uniform RGB; the 17-band preview remains separate.
+        var stops = LightingPresetCatalog.AudioPalettes[palette].Stops!;
+        double red=0,green=0,blue=0,total=0;
+        for(var i=0;i<bands.Length;i++)
+        {
+            var position=(double)i/Math.Max(1,bands.Length-1);
+            var upper=stops.FirstOrDefault(stop=>stop.Offset>=position) ?? stops[^1];
+            var lower=stops.LastOrDefault(stop=>stop.Offset<=position) ?? stops[0];
+            var fraction=upper.Offset==lower.Offset ? 0 : (position-lower.Offset)/(upper.Offset-lower.Offset);
+            var from=Convert.FromHexString(lower.Color[3..]); var to=Convert.FromHexString(upper.Color[3..]);
+            var weight=Math.Clamp(bands[i],0,1);
+            red+=(from[0]+(to[0]-from[0])*fraction)*weight;
+            green+=(from[1]+(to[1]-from[1])*fraction)*weight;
+            blue+=(from[2]+(to[2]-from[2])*fraction)*weight;
+            total+=weight;
+        }
+        if(total==0) return "000000";
+        var scale=bands.Max()/total/2;
+        return $"{(byte)Math.Clamp(red*scale,0,127):X2}{(byte)Math.Clamp(green*scale,0,127):X2}{(byte)Math.Clamp(blue*scale,0,127):X2}";
+    }
     [DllImport("user32.dll")] private static extern IntPtr GetDC(IntPtr window);
     [DllImport("user32.dll")] private static extern int ReleaseDC(IntPtr window, IntPtr dc);
     [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
     [DllImport("gdi32.dll")] private static extern uint GetPixel(IntPtr dc, int x, int y);
-}
-
-internal sealed class CoreAudioPeakReader : IDisposable
-{
-    private readonly IMeter _meter;
-    public CoreAudioPeakReader()
-    {
-        var enumerator = (IDeviceEnumerator)new DeviceEnumerator();
-        IDevice? device = null;
-        try
-        {
-            Marshal.ThrowExceptionForHR(enumerator.GetDefaultAudioEndpoint(0, 1, out device));
-            var id = typeof(IMeter).GUID;
-            Marshal.ThrowExceptionForHR(device.Activate(ref id, 23, IntPtr.Zero, out var meter));
-            _meter = (IMeter)meter;
-        }
-        finally
-        {
-            if (device is not null) Marshal.ReleaseComObject(device);
-            Marshal.ReleaseComObject(enumerator);
-        }
-    }
-    public float ReadPeak() { Marshal.ThrowExceptionForHR(_meter.GetPeakValue(out var peak)); return peak; }
-    public void Dispose() => Marshal.ReleaseComObject(_meter);
-    [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] private class DeviceEnumerator { }
-    [ComImport, Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IDeviceEnumerator
-    {
-        [PreserveSig] int EnumAudioEndpoints(int flow, uint mask, out IntPtr devices);
-        [PreserveSig] int GetDefaultAudioEndpoint(int flow, int role, out IDevice device);
-    }
-    [ComImport, Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IDevice
-    {
-        [PreserveSig] int Activate(ref Guid id, uint context, IntPtr parameters, [MarshalAs(UnmanagedType.IUnknown)] out object result);
-    }
-    [ComImport, Guid("C02216F6-8C67-4B5B-9D00-D008E73E0064"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IMeter
-    {
-        [PreserveSig] int GetPeakValue(out float peak);
-    }
 }

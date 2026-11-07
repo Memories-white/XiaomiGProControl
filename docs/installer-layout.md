@@ -1,6 +1,6 @@
-# G Pro Control 0.12.3 安装包
+# G Pro Control 0.12.4 安装包
 
-安装包输出为 `artifacts/latest/GProControl-0.12.3-Setup-x64.exe`。首次安装使用中文/英文向导，
+安装包输出为 `artifacts/latest/GProControl-0.12.4-Setup-x64.exe`。首次安装使用中文/英文向导，
 默认安装到 `C:\Program Files\G Pro Control`，支持快捷方式和卸载；已有安装自动沿用旧目录升级。
 包含 x64 .NET 与 Windows App SDK 运行库，不需要另行安装 .NET。
 发布者元数据使用 `Memories_white`；安装包没有 Authenticode 签名。

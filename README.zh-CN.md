@@ -10,7 +10,7 @@
 
 轻量的界面，经过验证的硬件协议，可追溯的逆向过程。
 
-![Version](https://img.shields.io/badge/preview-0.12.3-3b82f6?style=flat-square)
+![Version](https://img.shields.io/badge/preview-0.12.4-3b82f6?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Windows_11_x64-64748b?style=flat-square)
 ![Stack](https://img.shields.io/badge/C%23-.NET_10_%2B_WinUI_3-14b8a6?style=flat-square)
 
@@ -36,6 +36,8 @@ XiaomiGProControl 是针对 **Redmi G Pro 2024 / TM2211** 的非官方控制中�
 
 | 功能 | 当前状态 | 实现说明 |
 | --- | --- | --- |
+| 详细参数 | 已实现并验证 | 本机 CPU/显卡/内存/磁盘/屏幕/BIOS/系统参数；报告排除设备序列号 |
+| 我的服务 | 已实现 | 官方手册、售后政策、网点、客服、驱动及账号入口；本地诊断摘要 |
 | 四档性能模式 | 已实机验证 | 静谧 / 均衡 / 极速 / 狂暴，写入后读回 |
 | CPU 温度、双风扇转速 | 已实机验证 | 原厂 EC `0x0900`，管理员只读 WMI |
 | GPU 遥测 | 已实现 | NVML：利用率、温度、功耗、显存 |
@@ -44,13 +46,13 @@ XiaomiGProControl 是针对 **Redmi G Pro 2024 / TM2211** 的非官方控制中�
 | Fn / Windows 键锁 / 触控板 | 已实现并验证 | 切回页面读取固件状态；写后读回，Windows 键锁往返与切页保持验证通过 |
 | 显卡输出模式 | 已实现 | `0=混合输出`、`1=独显直连`，读写确认，重启生效 |
 | 常规键盘灯效 | 已实机验证 | 9 种硬件效果及自选 RGB 柔光；支持适用的配色、方向、亮度、速度和长度 |
-| 光影随行 / 光音视界 | 已实现并验证 | 主屏平均颜色 / 系统播放音量驱动整键盘颜色，运行期间生效；与原厂逐键映射和频谱呈现有差异 |
+| 光影随行 / 光音视界 | 已实现并验证 | 主屏平均色；系统声音/麦克风、17 段频谱预览和四组渐变混色；键盘仍为统一 RGB |
 | 启动恢复 | 已实现 | 性能模式；键盘灯配置保存/恢复，全重启验收仍待补齐 |
 | 关闭询问与后台托盘 | 已实现 | 退出 / 转入后台 / 取消，可记住选择并在设置中修改 |
 | 开机自启动 | 已实现 | 当前用户管理员登录任务，可选择启动后转入后台 |
 | WLAN 加速 | 状态读取 | 复用原厂小米路由器加速状态，未实现强制开关 |
 | 自定义风扇曲线 / 固定 RPM | 未实现 | 尚无可安全验证的写入协议 |
-| 逐键图像映射 / 音频频谱 / 机身灯 | 未实现 | 当前屏幕与声音联动使用整键盘颜色，未复刻原厂全部视觉细节 |
+| 逐键图像映射 / 键盘频谱柱 / 机身灯 | 未实现 | 当前屏幕与声音联动使用整键盘颜色，未复刻原厂全部视觉细节 |
 
 这里的“已实机验证”只代表记录中的目标机器和版本，不代表所有配置均兼容。
 详细边界见 [验证记录](docs/verification.md)。
@@ -83,8 +85,8 @@ XiaomiGProControl 是针对 **Redmi G Pro 2024 / TM2211** 的非官方控制中�
 
 ### 安装
 
-从 [v0.12.3 预发布页面](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.12.3)
-下载 `GProControl-0.12.3-Setup-x64.exe`。安装器采用中文/英文 Inno Setup 向导，包含 .NET
+从 [v0.12.4 预发布页面](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.12.4)
+下载 `GProControl-0.12.4-Setup-x64.exe`。安装器采用中文/英文 Inno Setup 向导，包含 .NET
 与 Windows App SDK 运行库。安装包通过 Release 附件分发，不存入 Git 源码历史。
 
 安装结束后可选择是否启动，默认不启动；覆盖升级结束后也会提供启动询问。
@@ -95,7 +97,7 @@ XiaomiGProControl 是针对 **Redmi G Pro 2024 / TM2211** 的非官方控制中�
 安装根目录只保留启动器；DLL、语言和界面资源分类存放。首次安装准备 WinUI 兼容
 运行缓存，卸载清理本安装对应缓存并保留用户设置。详见 [安装目录与安装包](docs/installer-layout.md)。
 
-0.12.3 安装器已加入沿用旧目录、自动覆盖升级和按清单清理废弃程序文件的逻辑，
+0.12.4 安装器已加入沿用旧目录、自动覆盖升级和按清单清理废弃程序文件的逻辑，
 用户设置与清单外文件保留；新版安装与升级验收结果见 [验证记录](docs/verification.md)。
 
 ### 从源码构建

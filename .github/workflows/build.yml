@@ -25,3 +25,7 @@ jobs:
         run: dotnet run --project tests/GProControl.ProtocolSmokeTests -c Release
       - name: Synthetic log and settings tests (offline)
         run: dotnet run --project tests/GProControl.HardwareLogTests -c Release
+      - name: Audio FFT and PCM tests (offline)
+        run: dotnet run --project tests/GProControl.AudioSpectrumTests -c Release
+      - name: Report privacy and support links (offline)
+        run: dotnet run --project tests/GProControl.DetailsSmokeTests -c Release

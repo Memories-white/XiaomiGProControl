@@ -182,4 +182,5 @@ public sealed partial class DashboardPage : Page
     {
         App.MainWindow?.NavigateTo("performance");
     }
+    private void OpenDetails_Click(object sender, RoutedEventArgs e) => App.MainWindow?.NavigateTo("details");
 }
