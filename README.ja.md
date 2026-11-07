@@ -1,6 +1,6 @@
 <div align="center">
 
-[English](README.md) · [简体中文](README.zh-CN.md) · **日本語**
+[English](README.md) · [简体中文](README.zh-CN.md) · **日本語** · [Deutsch](README.de.md) · [Русский](README.ru.md)
 
 <img src="docs/assets/banner.svg" alt="Xiaomi G Pro Control — a quieter command center" width="100%" />
 
@@ -81,9 +81,10 @@ BIOS や EC ファームウェアを置き換えるものではありません�
 
 ### インストール
 
-現在のインストーラー出力は `GProControl-0.12.2-Setup-x64.exe` です。英語・中国語の Inno Setup
-ウィザードに .NET と Windows App SDK ランタイムを同梱しています。バイナリは Git 履歴には
-含めず、このリポジトリではまだ Release を公開していません。
+`GProControl-0.12.2-Setup-x64.exe` は
+[v0.12.2 プレリリース](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.12.2)
+からダウンロードできます。英語・中国語の Inno Setup ウィザードに .NET と Windows App SDK
+ランタイムを同梱しています。インストーラーは Release の添付ファイルとして配布し、Git のソース履歴には含めません。
 
 完了後にアプリを起動するか選択できます。既定では起動しません。
 対話形式の上書きアップグレードでも、完了後に起動するか確認します。
@@ -162,7 +163,7 @@ XiaomiGProControl/
 
 ## ドキュメント
 
-README は英語・簡体字中国語・日本語で提供しています。下記の詳細文書は、各リンク先の
+README は英語・簡体字中国語・日本語・ドイツ語・ロシア語で提供しています。下記の詳細文書は、各リンク先の
 原文で読めます。
 
 | 文書 | 内容 |
@@ -193,5 +194,5 @@ README は英語・簡体字中国語・日本語で提供しています。下�
 純正コントロールセンター、ドライバー、BIOS は配布しません。Windows App SDK と .NET は
 それぞれのパッケージから復元します。
 
-現在のリポジトリは非公開で、オープンソースライセンスは指定していません。
-ソースのアップロードは公開再配布の許諾を意味しません。
+オープンソースライセンスはまだ指定していません。
+ソースの公開は再配布の許諾を意味しません。

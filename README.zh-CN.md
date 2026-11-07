@@ -1,6 +1,6 @@
 <div align="center">
 
-[English](README.md) · **简体中文** · [日本語](README.ja.md)
+[English](README.md) · **简体中文** · [日本語](README.ja.md) · [Deutsch](README.de.md) · [Русский](README.ru.md)
 
 <img src="docs/assets/banner.svg" alt="Xiaomi G Pro Control — a quieter command center" width="100%" />
 
@@ -79,8 +79,9 @@ XiaomiGProControl 是针对 **Redmi G Pro 2024 / TM2211** 的非官方控制中�
 
 ### 安装
 
-当前安装器构建产物为 `GProControl-0.12.2-Setup-x64.exe`，采用中文/英文 Inno Setup
-向导，包含 .NET 与 Windows App SDK 运行库。安装包不存入 Git 源码历史，本仓库当前未发布 Release。
+从 [v0.12.2 预发布页面](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.12.2)
+下载 `GProControl-0.12.2-Setup-x64.exe`。安装器采用中文/英文 Inno Setup 向导，包含 .NET
+与 Windows App SDK 运行库。安装包通过 Release 附件分发，不存入 Git 源码历史。
 
 安装结束后可选择是否启动，默认不启动；覆盖升级结束后也会提供启动询问。
 
@@ -154,7 +155,7 @@ XiaomiGProControl/
 
 ## 文档导航
 
-README 提供英文、简体中文和日文版本。下方详细研究与实现文档保留各自的中文或英文原文。
+README 提供英文、简体中文、日文、德语和俄语版本。下方详细研究与实现文档保留各自的中文或英文原文。
 
 | 文档 | 内容 |
 | --- | --- |
@@ -181,4 +182,4 @@ README 提供英文、简体中文和日文版本。下方详细研究与实现�
 相关名称和商标属于各自所有者。仓库包含自有实现、分析方法和研究结论，不分发原厂
 控制中心、驱动或 BIOS 固件。Windows App SDK 和 .NET 通过各自的软件包恢复。
 
-当前仓库为私有，尚未指定开源许可；上传源码不等于授予公开再分发许可。
+项目尚未指定开源许可；公开浏览源码不等于授予再分发许可。

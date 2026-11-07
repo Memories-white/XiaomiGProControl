@@ -1,6 +1,6 @@
 <div align="center">
 
-**English** · [简体中文](README.zh-CN.md) · [日本語](README.ja.md)
+**English** · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [Deutsch](README.de.md) · [Русский](README.ru.md)
 
 <img src="docs/assets/banner.svg" alt="Xiaomi G Pro Control — a quieter command center" width="100%" />
 
@@ -81,9 +81,10 @@ compatibility with every configuration. See the [validation record](docs/verific
 
 ### Installation
 
-The current installer output is `GProControl-0.12.2-Setup-x64.exe`. Its English/Chinese Inno Setup
-wizard bundles the .NET and Windows App SDK runtimes. Installer binaries are excluded from Git history;
-this repository has not published a Release.
+Download `GProControl-0.12.2-Setup-x64.exe` from the
+[v0.12.2 prerelease](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.12.2).
+Its English/Chinese Inno Setup wizard bundles the .NET and Windows App SDK runtimes.
+Installer binaries are distributed as release assets and excluded from Git source history.
 
 You can choose whether to launch the application after installation; the default is not to launch.
 An interactive upgrade also offers this choice when it finishes.
@@ -161,7 +162,7 @@ Local research inputs, decompilation outputs, third-party binaries, and build ar
 
 ## Documentation
 
-The README is available in English, Simplified Chinese, and Japanese. The detailed research and
+The README is available in English, Simplified Chinese, Japanese, German, and Russian. The detailed research and
 implementation documents below retain their original Chinese or English text.
 
 | Document | Contents |
@@ -191,5 +192,5 @@ Microsoft, or NVIDIA. Names and trademarks belong to their respective owners. Th
 original implementation code, analysis methods, and findings; it does not distribute the vendor control
 center, drivers, or BIOS firmware. Windows App SDK and .NET are restored through their respective packages.
 
-The repository is currently private and has no specified open-source license. Uploading source code does
-not grant permission for public redistribution.
+No open-source license has been specified. Public access to the source code alone does not grant
+permission for redistribution.
