@@ -2,7 +2,8 @@
 [CmdletBinding()]
 param(
     [string]$InnoCompiler,
-    [string]$PublishSource
+    [string]$PublishSource,
+    [string]$OutputDirectory
 )
 
 $ErrorActionPreference = 'Stop'
@@ -14,7 +15,8 @@ $stage = Join-Path $root "artifacts\staging\Installer-$version-$stamp"
 $raw = Join-Path $stage 'publish'
 $app = Join-Path $stage 'classified'
 $nativeOutput = Join-Path $stage 'launcher'
-$latest = Join-Path $root 'artifacts\latest'
+$latest = if ($OutputDirectory) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory) }
+          else { Join-Path $root 'artifacts\latest' }
 New-Item -ItemType Directory -Path $raw,$app,$nativeOutput,$latest -Force | Out-Null
 
 if (!$PublishSource) {

@@ -213,21 +213,36 @@ public sealed partial class MainWindow : Window
         {
             try
             {
-                NavigateTo("details");
+                var dashboard = (DashboardPage)ContentFrame.Content;
+                var openDetails = (Button)dashboard.FindName("OpenDetailsButton");
+                var peer = new Microsoft.UI.Xaml.Automation.Peers.ButtonAutomationPeer(openDetails);
+                ((Microsoft.UI.Xaml.Automation.Provider.IInvokeProvider)peer.GetPattern(
+                    Microsoft.UI.Xaml.Automation.Peers.PatternInterface.Invoke)).Invoke();
+                await Task.Delay(300);
+                if (ContentFrame.Content is not DetailsPage || !ContentFrame.CanGoBack ||
+                    Navigation.IsBackButtonVisible != NavigationViewBackButtonVisible.Visible ||
+                    (Navigation.SelectedItem as NavigationViewItem)?.Tag?.ToString() != "dashboard" ||
+                    Navigation.MenuItems.OfType<NavigationViewItem>().Any(item => item.Tag?.ToString() == "details"))
+                    throw new InvalidOperationException("Details must be a dashboard subpage.");
                 var page=(DetailsPage)ContentFrame.Content;
                 var ready=(Button)page.FindName("CopyButton");
                 for(var attempt=0;attempt<100 && !ready.IsEnabled;attempt++) await Task.Delay(200);
-                var sections=(ItemsControl)page.FindName("SectionList");
+                var sections=(Grid)page.FindName("SectionGrid");
                 var serial=(TextBlock)page.FindName("SerialText");
-                if(!ready.IsEnabled || sections.Items.Count<8 || !serial.Text.StartsWith("隐藏"))
+                if(!ready.IsEnabled || sections.Children.Count<8 || !serial.Text.StartsWith("隐藏"))
                     throw new InvalidOperationException("Details page data or serial privacy did not initialize.");
-                var count=sections.Items.Count;
+                var count=sections.Children.Count;
+                GoBack();
+                if (ContentFrame.Content is not DashboardPage || ContentFrame.CanGoBack)
+                    throw new InvalidOperationException("Details did not return to the dashboard.");
                 NavigateTo("support");
                 var support=(SupportPage)ContentFrame.Content;
                 var links=(ItemsControl)support.FindName("LinkList");
                 if(links.Items.Count!=6 || Navigation.IsBackButtonVisible!=NavigationViewBackButtonVisible.Collapsed)
                     throw new InvalidOperationException("Support page links or navigation differ.");
-                NavigateTo("details"); await Task.Delay(200);
+                NavigateTo("dashboard");
+                NavigateTo("details", asSubpage: true);
+                await Task.Delay(200);
                 if(!((TextBlock)((DetailsPage)ContentFrame.Content).FindName("SerialText")).Text.StartsWith("隐藏"))
                     throw new InvalidOperationException("Serial reveal was retained across navigation.");
                 StartupDiagnostics.Write($"Support/details UI smoke: sections={count}; links=6; serialHidden=True; rootBackHidden=True; navigation=True");
@@ -353,6 +368,7 @@ public sealed partial class MainWindow : Window
     private void ContentFrame_Navigated(object sender, NavigationEventArgs args)
     {
         var tag = _pages.FirstOrDefault(pair => pair.Value == args.SourcePageType).Key;
+        if (args.SourcePageType == typeof(DetailsPage)) tag = "dashboard";
         var item = Navigation.MenuItems.Concat(Navigation.FooterMenuItems)
             .OfType<NavigationViewItem>().FirstOrDefault(candidate => candidate.Tag?.ToString() == tag);
         _syncingNavigation = true;

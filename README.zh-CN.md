@@ -10,7 +10,7 @@
 
 轻量的界面，经过验证的硬件协议，可追溯的逆向过程。
 
-![Version](https://img.shields.io/badge/preview-0.13.0-3b82f6?style=flat-square)
+![Version](https://img.shields.io/badge/release-0.13.1-3b82f6?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Windows_11_x64-64748b?style=flat-square)
 ![Stack](https://img.shields.io/badge/C%23-.NET_10_%2B_WinUI_3-14b8a6?style=flat-square)
 
@@ -86,8 +86,8 @@ XiaomiGProControl 是针对 **Redmi G Pro 2024 / TM2211** 的非官方控制中�
 
 ### 安装
 
-从 [v0.13.0 预发布页面](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.13.0)
-下载 `GProControl-0.13.0-Setup-x64.exe`。安装器采用中文/英文 Inno Setup 向导，包含 .NET
+从 [v0.13.1 发布页面](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.13.1)
+下载 `GProControl-0.13.1-Setup-x64.exe`。安装器采用中文/英文 Inno Setup 向导，包含 .NET
 与 Windows App SDK 运行库。安装包通过 Release 附件分发，不存入 Git 源码历史。
 
 安装结束后可选择是否启动，默认不启动；覆盖升级结束后也会提供启动询问。
@@ -98,7 +98,7 @@ XiaomiGProControl 是针对 **Redmi G Pro 2024 / TM2211** 的非官方控制中�
 安装根目录只保留启动器；DLL、语言和界面资源分类存放。首次安装准备 WinUI 兼容
 运行缓存，卸载清理本安装对应缓存并保留用户设置。详见 [安装目录与安装包](docs/installer-layout.md)。
 
-0.13.0 安装器已加入沿用旧目录、自动覆盖升级和按清单清理废弃程序文件的逻辑，
+安装器支持沿用旧目录、自动覆盖升级和按清单清理废弃程序文件的逻辑，
 用户设置与清单外文件保留；新版安装与升级验收结果见 [验证记录](docs/verification.md)。
 
 ### 从源码构建

@@ -10,7 +10,7 @@
 
 A clean interface, validated hardware protocols, and documented reverse engineering.
 
-![Version](https://img.shields.io/badge/preview-0.13.0-3b82f6?style=flat-square)
+![Version](https://img.shields.io/badge/release-0.13.1-3b82f6?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Windows_11_x64-64748b?style=flat-square)
 ![Stack](https://img.shields.io/badge/C%23-.NET_10_%2B_WinUI_3-14b8a6?style=flat-square)
 
@@ -88,8 +88,8 @@ compatibility with every configuration. See the [validation record](docs/verific
 
 ### Installation
 
-Download `GProControl-0.13.0-Setup-x64.exe` from the
-[v0.13.0 prerelease](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.13.0).
+Download `GProControl-0.13.1-Setup-x64.exe` from the
+[v0.13.1 release](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.13.1).
 Its English/Chinese Inno Setup wizard bundles the .NET and Windows App SDK runtimes.
 Installer binaries are distributed as release assets and excluded from Git source history.
 

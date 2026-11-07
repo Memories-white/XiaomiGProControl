@@ -75,7 +75,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR arguments, int) {
         CloseHandle(file); file = INVALID_HANDLE_VALUE;
         std::wstring command = L"\"" + payload + L"\" ";
         command += arguments;
-        if (upgrade) command += L" /SILENT /SUPPRESSMSGBOXES /SP- /NORESTART";
+        if (upgrade) command += silent ? L" /SUPPRESSMSGBOXES /SP- /NORESTART" : L" /GPROUPGRADE /SP- /NORESTART";
         STARTUPINFOW startup{sizeof(STARTUPINFOW)};
         PROCESS_INFORMATION process{};
         if (!CreateProcessW(payload.c_str(), command.data(), nullptr, nullptr, FALSE,
@@ -85,17 +85,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR arguments, int) {
         WaitForSingleObject(process.hProcess, INFINITE);
         GetExitCodeProcess(process.hProcess, &result);
         CloseHandle(process.hProcess);
-        // Inno's silent upgrade has no completion page. Keep installation
-        // automatic, but let interactive users decide whether to open the app.
-        if (upgrade && !silent && result == ERROR_SUCCESS) {
-            const auto executable = InstalledExecutable();
-            if (!executable.empty() && MessageBoxW(nullptr, L"安装已完成。是否现在启动 G Pro Control？",
-                L"G Pro Control", MB_YESNO | MB_ICONINFORMATION | MB_DEFBUTTON2 | MB_SETFOREGROUND) == IDYES) {
-                if (reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", executable.c_str(), nullptr, nullptr, SW_SHOWNORMAL)) <= 32)
-                    MessageBoxW(nullptr, L"安装已完成，但程序未能启动。请通过桌面或开始菜单打开。",
-                        L"G Pro Control", MB_OK | MB_ICONWARNING);
-            }
-        }
     } catch (const wchar_t* message) {
         MessageBoxW(nullptr, message, L"G Pro Control 安装", MB_OK | MB_ICONERROR);
     } catch (...) {

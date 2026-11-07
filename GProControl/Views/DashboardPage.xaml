@@ -18,13 +18,14 @@
                     <TextBlock Text="设备概览" FontSize="28" FontWeight="SemiBold" />
                     <TextBlock Text="小米 G Pro 2024 · 实时状态" Opacity="0.62" />
                 </StackPanel>
-                <Border Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" CornerRadius="12" Padding="12,7"
-                        Background="{ThemeResource AccentFillColorTertiaryBrush}">
-                    <StackPanel Orientation="Horizontal" Spacing="7">
-                        <Ellipse Width="7" Height="7" Fill="{ThemeResource AccentFillColorDefaultBrush}" />
-                        <Button x:Name="OpenDetailsButton" Content="详细参数" Click="OpenDetails_Click" FontSize="12" Padding="8,2" />
+                <Button x:Name="OpenDetailsButton" Grid.Column="1" VerticalAlignment="Center"
+                        Click="OpenDetails_Click" Padding="12,8">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE946;" FontSize="16" />
+                        <TextBlock Text="详细参数" VerticalAlignment="Center" />
+                        <FontIcon Glyph="&#xE76C;" FontSize="10" Opacity="0.65" />
                     </StackPanel>
-                </Border>
+                </Button>
             </Grid>
 
             <Grid Grid.Row="1" ColumnSpacing="16">

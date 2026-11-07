@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.13.0"
+  #define AppVersion "0.13.1"
 #endif
 #ifndef SourceRoot
   #error SourceRoot must point to the classified installation payload.
@@ -62,6 +62,25 @@ var
   UninstallCacheHash: String;
   PreviousOwnedFiles: TArrayOfString;
   PreviousCacheHash: String;
+  AutomaticUpgrade: Boolean;
+
+function PostMessage(Wnd: HWND; Msg: Cardinal; WParam, LParam: Longint): Boolean;
+  external 'PostMessageW@user32.dll stdcall';
+
+procedure InitializeWizard;
+var
+  I: Integer;
+begin
+  for I := 1 to ParamCount do
+    if CompareText(ParamStr(I), '/GPROUPGRADE') = 0 then
+      AutomaticUpgrade := not WizardSilent;
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if AutomaticUpgrade and (CurPageID = wpReady) then
+    PostMessage(WizardForm.NextButton.Handle, $00F5, 0, 0);
+end;
 
 function GetFileAttributes(Name: String): LongWord;
   external 'GetFileAttributesW@kernel32.dll stdcall';
@@ -108,8 +127,8 @@ end;
 
 function ShouldSkipPage(PageID: Integer): Boolean;
 begin
-  Result := HasPreviousInstallation and ((PageID = wpSelectDir) or (PageID = wpSelectProgramGroup)
-    or (PageID = wpSelectTasks) or (PageID = wpReady));
+  Result := (AutomaticUpgrade and (PageID = wpWelcome)) or
+    (HasPreviousInstallation and (PageID in [wpSelectDir, wpSelectProgramGroup, wpSelectTasks]));
 end;
 
 function IsOwnedPath(const Path: String): Boolean;

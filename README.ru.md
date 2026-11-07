@@ -10,7 +10,7 @@
 
 Простой интерфейс, проверенные аппаратные протоколы и документированный процесс обратной разработки.
 
-![Version](https://img.shields.io/badge/preview-0.13.0-3b82f6?style=flat-square)
+![Version](https://img.shields.io/badge/release-0.13.1-3b82f6?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Windows_11_x64-64748b?style=flat-square)
 ![Stack](https://img.shields.io/badge/C%23-.NET_10_%2B_WinUI_3-14b8a6?style=flat-square)
 
@@ -87,8 +87,8 @@ XiaomiGProControl — неофициальная новая реализация
 
 ### Установка
 
-Текущая предварительная сборка — `GProControl-0.13.0-Setup-x64.exe`, доступная в
-[предварительном выпуске v0.13.0](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.13.0).
+Текущая версия — `GProControl-0.13.1-Setup-x64.exe`, доступная в
+[выпуске v0.13.1](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.13.1).
 Английский/китайский мастер Inno Setup включает среды выполнения .NET и Windows App SDK.
 Установщики публикуются как вложения выпуска и не сохраняются в истории исходного кода Git.
 

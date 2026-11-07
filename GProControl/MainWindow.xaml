@@ -16,7 +16,7 @@
                 </Border>
                 <TextBlock Text="G Pro Control" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
                 <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="10" Padding="8,3">
-                    <TextBlock Text="PREVIEW" FontSize="10" Opacity="0.7" />
+                    <TextBlock Text="G PRO" FontSize="10" Opacity="0.7" />
                 </Border>
             </StackPanel>
         </Grid>
@@ -34,9 +34,6 @@
                         SelectionChanged="Navigation_SelectionChanged">
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="概览" Tag="dashboard" Icon="Home" />
-                <NavigationViewItem Content="详细参数" Tag="details">
-                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE9CE;" /></NavigationViewItem.Icon>
-                </NavigationViewItem>
                 <NavigationViewItem Content="性能" Tag="performance">
                     <NavigationViewItem.Icon><FontIcon Glyph="&#xE9D9;" /></NavigationViewItem.Icon>
                 </NavigationViewItem>
