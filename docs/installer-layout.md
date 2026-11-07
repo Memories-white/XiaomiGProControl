@@ -1,6 +1,6 @@
-# G Pro Control 0.12.0 安装包
+# G Pro Control 0.12.2 安装包
 
-安装包输出为 `artifacts/latest/GProControl-0.12.0-Setup-x64.exe`。首次安装使用中文/英文向导，
+安装包输出为 `artifacts/latest/GProControl-0.12.2-Setup-x64.exe`。首次安装使用中文/英文向导，
 默认安装到 `C:\Program Files\G Pro Control`，支持快捷方式和卸载；已有安装自动沿用旧目录升级。
 包含 x64 .NET 与 Windows App SDK 运行库，不需要另行安装 .NET。
 发布者元数据使用 `Memories_white`；安装包没有 Authenticode 签名。
@@ -54,6 +54,10 @@ WinUI 原生语言 MUI、PRI 和运行库依赖原始相对路径；直接移动
 用户设置 `%LocalAppData%\Memories_white\GProControl\settings.json` 保留。
 
 ## 安装入口与权限
+
+安装完成后可以选择是否启动：首次安装使用完成页复选框，默认不勾选；交互式覆盖升级
+保持自动覆盖流程，成功结束后由安装入口询问是否启动，默认“否”。显式静默或禁止提示的
+命令行安装不弹询问，也不启动程序。
 
 0.11.1 增加带 `requireAdministrator` 清单的原生安装入口，Windows 在运行入口代码前
 先处理 UAC 提升，再将内嵌的 Inno 安装器写到 ProgramData 下随机命名的临时目录。

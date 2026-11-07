@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <shlobj.h>
+#include <shellapi.h>
 #include <sddl.h>
 #include <string>
 #pragma comment(lib, "shell32.lib")
@@ -7,17 +8,29 @@
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "user32.lib")
 
-static bool IsUpgrade() {
+static std::wstring InstalledExecutable() {
     wchar_t location[32768]{};
     DWORD size = sizeof(location);
     if (RegGetValueW(HKEY_LOCAL_MACHINE,
         L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{C185DBE4-018F-45B8-9464-5474FCA1C537}_is1",
         L"InstallLocation", RRF_RT_REG_SZ | RRF_SUBKEY_WOW6464KEY, nullptr, location, &size) != ERROR_SUCCESS)
-        return false;
+        return {};
     std::wstring executable = location;
     if (!executable.empty() && executable.back() != L'\\') executable += L'\\';
     executable += L"GProControl.exe";
-    return GetFileAttributesW(executable.c_str()) != INVALID_FILE_ATTRIBUTES;
+    return GetFileAttributesW(executable.c_str()) != INVALID_FILE_ATTRIBUTES ? executable : std::wstring{};
+}
+
+static bool ExplicitlySilent() {
+    int count = 0;
+    auto arguments = CommandLineToArgvW(GetCommandLineW(), &count);
+    bool silent = false;
+    if (!arguments) throw L"无法读取安装参数。";
+    for (int index = 1; index < count; ++index)
+        if (_wcsicmp(arguments[index], L"/SILENT") == 0 || _wcsicmp(arguments[index], L"/VERYSILENT") == 0
+            || _wcsicmp(arguments[index], L"/SUPPRESSMSGBOXES") == 0) silent = true;
+    LocalFree(arguments);
+    return silent;
 }
 
 // The embedded Inno loader extracts before elevating. Elevate this outer EXE
@@ -27,6 +40,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR arguments, int) {
     HANDLE file = INVALID_HANDLE_VALUE;
     DWORD result = ERROR_INSTALL_FAILURE;
     try {
+        const bool upgrade = !InstalledExecutable().empty();
+        const bool silent = ExplicitlySilent();
         PWSTR programData = nullptr;
         if (FAILED(SHGetKnownFolderPath(FOLDERID_ProgramData, 0, nullptr, &programData)))
             throw L"无法获取系统安装临时目录。";
@@ -60,7 +75,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR arguments, int) {
         CloseHandle(file); file = INVALID_HANDLE_VALUE;
         std::wstring command = L"\"" + payload + L"\" ";
         command += arguments;
-        if (IsUpgrade()) command += L" /SILENT /SUPPRESSMSGBOXES /SP- /NORESTART";
+        if (upgrade) command += L" /SILENT /SUPPRESSMSGBOXES /SP- /NORESTART";
         STARTUPINFOW startup{sizeof(STARTUPINFOW)};
         PROCESS_INFORMATION process{};
         if (!CreateProcessW(payload.c_str(), command.data(), nullptr, nullptr, FALSE,
@@ -70,6 +85,17 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR arguments, int) {
         WaitForSingleObject(process.hProcess, INFINITE);
         GetExitCodeProcess(process.hProcess, &result);
         CloseHandle(process.hProcess);
+        // Inno's silent upgrade has no completion page. Keep installation
+        // automatic, but let interactive users decide whether to open the app.
+        if (upgrade && !silent && result == ERROR_SUCCESS) {
+            const auto executable = InstalledExecutable();
+            if (!executable.empty() && MessageBoxW(nullptr, L"安装已完成。是否现在启动 G Pro Control？",
+                L"G Pro Control", MB_YESNO | MB_ICONINFORMATION | MB_DEFBUTTON2 | MB_SETFOREGROUND) == IDYES) {
+                if (reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", executable.c_str(), nullptr, nullptr, SW_SHOWNORMAL)) <= 32)
+                    MessageBoxW(nullptr, L"安装已完成，但程序未能启动。请通过桌面或开始菜单打开。",
+                        L"G Pro Control", MB_OK | MB_ICONWARNING);
+            }
+        }
     } catch (const wchar_t* message) {
         MessageBoxW(nullptr, message, L"G Pro Control 安装", MB_OK | MB_ICONERROR);
     } catch (...) {

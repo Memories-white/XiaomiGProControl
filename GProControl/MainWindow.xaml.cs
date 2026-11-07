@@ -175,12 +175,22 @@ public sealed partial class MainWindow : Window
             await Task.Delay(300);
             var selected = ContentFrame.Content is PerformancePage
                 && (Navigation.SelectedItem as NavigationViewItem)?.Tag?.ToString() == "performance"
-                && Navigation.IsBackEnabled;
+                && !Navigation.IsBackEnabled;
+            var shortcutBackHidden = Navigation.IsBackButtonVisible == NavigationViewBackButtonVisible.Collapsed;
+            NavigateTo("dashboard");
+            NavigateTo("performance", asSubpage: true);
+            var childBackVisible = Navigation.IsBackEnabled
+                && Navigation.IsBackButtonVisible == NavigationViewBackButtonVisible.Visible;
             GoBack();
             await Task.Delay(300);
             var back = ContentFrame.Content is DashboardPage
                 && (Navigation.SelectedItem as NavigationViewItem)?.Tag?.ToString() == "dashboard";
-            StartupDiagnostics.Write($"Shell navigation smoke: selected={selected}; back={back}; historyClean={!ContentFrame.CanGoBack}");
+            var historyClean = !ContentFrame.CanGoBack;
+            Navigation.SelectedItem = Navigation.MenuItems.OfType<NavigationViewItem>()
+                .First(item => item.Tag?.ToString() == "performance");
+            var rootBackHidden = ContentFrame.Content is PerformancePage && !ContentFrame.CanGoBack
+                && Navigation.IsBackButtonVisible == NavigationViewBackButtonVisible.Collapsed;
+            StartupDiagnostics.Write($"Shell navigation smoke: selected={selected}; back={back}; historyClean={historyClean}; rootBackHidden={rootBackHidden}; shortcutBackHidden={shortcutBackHidden}; childBackVisible={childBackVisible}");
         }
         catch (Exception exception) { StartupDiagnostics.Write("Shell navigation smoke failed.", exception); }
         finally { Close(); }
@@ -248,10 +258,21 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    public void NavigateTo(string tag)
+    private void Navigation_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
+    {
+        if (args.InvokedItemContainer is NavigationViewItem item && item.Tag is string tag) NavigateTo(tag);
+    }
+
+    public void NavigateTo(string tag, bool asSubpage = false)
     {
         if (!_pages.TryGetValue(tag, out var page)) throw new ArgumentOutOfRangeException(nameof(tag));
         if (ContentFrame.CurrentSourcePageType != page) ContentFrame.Navigate(page, tag);
+        if (!asSubpage)
+        {
+            ContentFrame.BackStack.Clear();
+            ContentFrame.ForwardStack.Clear();
+            UpdateBackNavigation();
+        }
     }
 
     private void ContentFrame_Navigated(object sender, NavigationEventArgs args)
@@ -262,6 +283,11 @@ public sealed partial class MainWindow : Window
         _syncingNavigation = true;
         try { Navigation.SelectedItem = item; }
         finally { _syncingNavigation = false; }
+        UpdateBackNavigation();
+    }
+
+    private void UpdateBackNavigation()
+    {
         Navigation.IsBackEnabled = ContentFrame.CanGoBack;
         Navigation.IsBackButtonVisible = ContentFrame.CanGoBack
             ? NavigationViewBackButtonVisible.Visible : NavigationViewBackButtonVisible.Collapsed;

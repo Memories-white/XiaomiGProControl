@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.12.1"
+  #define AppVersion "0.12.2"
 #endif
 #ifndef SourceRoot
   #error SourceRoot must point to the classified installation payload.
@@ -52,7 +52,7 @@ Name: "{group}\{cm:UninstallProgram,G Pro Control}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\G Pro Control"; Filename: "{app}\GProControl.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\GProControl.exe"; Description: "{cm:LaunchProgram,G Pro Control}"; Flags: postinstall nowait skipifsilent
+Filename: "{app}\GProControl.exe"; Description: "{cm:LaunchProgram,G Pro Control}"; Flags: postinstall nowait skipifsilent unchecked
 
 [UninstallRun]
 Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /TN ""GProControl Startup"" /F"; Flags: runhidden; RunOnceId: "RemoveGProControlStartupTask"; Check: OwnsStartupTask

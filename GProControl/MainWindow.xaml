@@ -30,6 +30,7 @@
                         OpenPaneLength="184"
                         CompactPaneLength="52"
                         BackRequested="Navigation_BackRequested"
+                        ItemInvoked="Navigation_ItemInvoked"
                         SelectionChanged="Navigation_SelectionChanged">
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="概览" Tag="dashboard" Icon="Home" />
