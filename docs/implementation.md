@@ -137,6 +137,9 @@ pwsh -File scripts/build-installer.ps1 -InnoCompiler 'C:\Tools\InnoSetup\ISCC.ex
 `AudioSpectrumReader` 在独立 MTA 线程维护 WASAPI 采样，`AudioSpectrumDsp` 做 PCM 解码及 FFT；
 `AmbientLightingOptions` 保存采集源、呈现方式、渐变和屏幕采样密度。动画仍通过已验证的统一 RGB 输出。
 
+0.13.0 新增 `B21RealtimeSession`、`KeyboardPixelCodec`、`KeyboardPixelRenderer` 和 `ScreenLightingSampler`，
+在实际显示确认后开放逐键输出；统一 RGB 模式继续保留。详见 [逐键协议与验证边界](keyboard-realtime.md)。
+
 ```powershell
 dotnet run --project tests/GProControl.AudioSpectrumTests -c Release
 dotnet run --project tests/GProControl.DetailsSmokeTests -c Release

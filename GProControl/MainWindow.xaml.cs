@@ -13,8 +13,10 @@ public sealed partial class MainWindow : Window
 {
     private TrayIconService? _tray;
     private bool _exiting;
+    private bool _closeApproved;
     private bool _closePromptRunning;
     private bool _syncingNavigation;
+    private (CancellationTokenSource Cancellation,Task Completion)? _lightingTest;
     private readonly Dictionary<string, Type> _pages = new()
     {
         ["dashboard"] = typeof(DashboardPage),
@@ -45,9 +47,9 @@ public sealed partial class MainWindow : Window
 
     private async void OnClosing(AppWindow sender, AppWindowClosingEventArgs args)
     {
-        if (_exiting || App.IsPackageSmoke) return;
+        if (_closeApproved || App.IsPackageSmoke) return;
         args.Cancel = true;
-        if (_closePromptRunning) return;
+        if (_exiting || _closePromptRunning) return;
         _closePromptRunning = true;
         try
         {
@@ -134,9 +136,29 @@ public sealed partial class MainWindow : Window
     {
         if (_exiting) return;
         _exiting = true;
+        if(_lightingTest is { } test)
+        {
+            test.Cancellation.Cancel();
+            try {await test.Completion;}
+            catch(OperationCanceledException) { }
+            catch(Exception exception) {StartupDiagnostics.Write("Lighting diagnostic exit recovery failed.",exception);}
+        }
         await App.AmbientLighting.StopAsync();
         _tray?.Dispose();
+        _closeApproved=true;
         Close();
+    }
+
+    internal bool IsExiting => _exiting;
+
+    internal async Task RunLightingTestAsync(Func<CancellationToken,Task> run,CancellationToken cancellationToken)
+    {
+        if(_exiting || _lightingTest is not null) throw new InvalidOperationException("已有灯效校验正在运行，或程序正在退出。");
+        using var cancellation=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var task=run(cancellation.Token);
+        _lightingTest=(cancellation,task);
+        try {await task;}
+        finally {_lightingTest=null;}
     }
 
     private async Task ShowTrayErrorAsync()
@@ -160,6 +182,20 @@ public sealed partial class MainWindow : Window
         RestoreFromBackground();
         var restored = IsWindowVisible(handle);
         StartupDiagnostics.Write($"Background lifecycle smoke: hidden={hidden}; restored={restored}");
+        if(Environment.GetCommandLineArgs().Contains("--lighting-exit-smoke"))
+        {
+            _=RunLightingTestAsync(async token=>
+            {
+                try {await Task.Delay(Timeout.Infinite,token);}
+                catch(OperationCanceledException) when(token.IsCancellationRequested)
+                {
+                    await Task.Delay(200);
+                    StartupDiagnostics.Write("Lighting exit smoke: cancellation=True; cleanup awaited=True; noHardwareWrites=True");
+                }
+            },CancellationToken.None);
+            ExitApplication();
+            return;
+        }
         if (Environment.GetCommandLineArgs().Contains("--device-ui-smoke")) await VerifyDeviceNavigationAsync();
         if (Environment.GetCommandLineArgs().Contains("--navigation-smoke")) await VerifyShellNavigationAsync();
         if (Environment.GetCommandLineArgs().Contains("--lighting-preset-smoke"))

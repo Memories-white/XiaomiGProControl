@@ -10,7 +10,7 @@ namespace GProControl.Services;
 /// Guarded client for the RGB keyboard HID interface. Reads CMD 1/CMD 6 and
 /// permits only the wave parameters confirmed by captured vendor traffic.
 /// </summary>
-internal sealed class B21HidClient
+internal sealed partial class B21HidClient
 {
     private const uint DigcfPresent = 0x00000002;
     private const uint DigcfDeviceInterface = 0x00000010;
@@ -24,6 +24,14 @@ internal sealed class B21HidClient
     private const int ErrorInsufficientBuffer = 122;
     private const string TargetInterfaceToken = "vid_1a86&pid_e302&mi_02";
     private static readonly SemaphoreSlim _commandLock = new(1, 1);
+    private static readonly SemaphoreSlim RealtimeLease = new(1,1);
+
+    // Call only while holding the command lock. A realtime entry cannot start its
+    // device transaction until that lock is released, even if it has just acquired its lease.
+    private static void RequireNoRealtimeSession()
+    {
+        if(RealtimeLease.CurrentCount==0) throw new InvalidOperationException("请先停止逐键灯效或显示校验。");
+    }
 
     public string? FindDevicePath()
     {
@@ -140,6 +148,7 @@ internal sealed class B21HidClient
         await _commandLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            RequireNoRealtimeSession();
             var version = await ExchangeAsync(6, null, timeout, cancellationToken).ConfigureAwait(false);
             if (version[5] != 0x01 || version[6] != 0x13)
             {
@@ -226,10 +235,11 @@ internal sealed class B21HidClient
         await _commandLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            RequireNoRealtimeSession();
             var version = await ExchangeAsync(6, null, timeout, cancellationToken).ConfigureAwait(false);
             if (version[5] != 1 || version[6] != 0x13) throw new InvalidOperationException("键盘硬件版本不匹配。");
             var original = await ExchangeAsync(1, null, timeout, cancellationToken).ConfigureAwait(false);
-            if (!KeyboardLightingCodec.TryParseCmd1Reply(original, DateTime.Now, out var state) || state?.LedAreaMask != 0xB)
+            if (!KeyboardLightingCodec.TryParseCmd1Reply(original, DateTime.Now, out var state) || state?.LedAreaMask != 0xB || state.EffectCode==0)
                 throw new InvalidOperationException("无法确认当前键盘灯状态。");
             var target = (byte[])original.Clone(); target[3] = 2;
             target[5] = enabled ? profile.EffectCode : (byte)0xFF;
@@ -289,9 +299,9 @@ internal sealed class B21HidClient
     internal async Task RestoreCapturedAsync(byte[] original, TimeSpan timeout)
     {
         if (!KeyboardLightingCodec.TryParseCmd1Reply(original, DateTime.Now, out var state)
-            || state?.LedAreaMask != 0xB) throw new InvalidDataException("无效的灯效备份。");
+            || state?.LedAreaMask != 0xB || state.EffectCode==0) throw new InvalidDataException("无效的灯效备份。");
         await _commandLock.WaitAsync();
-        try { await RestoreStateAsync(original, timeout, "captured profile"); }
+        try { RequireNoRealtimeSession(); await RestoreStateAsync(original, timeout, "captured profile"); }
         finally { _commandLock.Release(); }
     }
 
@@ -309,6 +319,7 @@ internal sealed class B21HidClient
         await _commandLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            RequireNoRealtimeSession();
             var version = await ExchangeAsync(6, null, timeout, cancellationToken).ConfigureAwait(false);
             if (version[5] != 0x01 || version[6] != 0x13)
             {
@@ -396,6 +407,7 @@ internal sealed class B21HidClient
         await _commandLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            RequireNoRealtimeSession();
             var version = await ExchangeAsync(6, null, timeout, cancellationToken).ConfigureAwait(false);
             if (version[5] != 0x01 || version[6] != 0x13)
             {
@@ -552,6 +564,7 @@ internal sealed class B21HidClient
 
     private async Task RestoreStateAsync(byte[] original, TimeSpan timeout, string description)
     {
+        if(original[5]==0) throw new InvalidDataException("实时模式不能写入键盘闪存。");
         Exception? lastFailure = null;
         for (var attempt = 1; attempt <= 3; attempt++)
         {

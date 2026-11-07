@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../GProControl/Models/KeyboardPixel.cs" Link="KeyboardPixel.cs" />
+    <Compile Include="../../GProControl/Models/LightingPreset.cs" Link="LightingPreset.cs" />
+    <Compile Include="../../GProControl/Models/LightingProfile.cs" Link="LightingProfile.cs" />
+    <Compile Include="../../GProControl/Models/KeyboardLightingState.cs" Link="KeyboardLightingState.cs" />
+    <Compile Include="../../GProControl/Protocol/KeyboardPixelCodec.cs" Link="KeyboardPixelCodec.cs" />
+    <Compile Include="../../GProControl/Services/KeyboardPixelRenderer.cs" Link="KeyboardPixelRenderer.cs" />
+  </ItemGroup>
+</Project>

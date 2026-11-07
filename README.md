@@ -10,7 +10,7 @@
 
 A clean interface, validated hardware protocols, and documented reverse engineering.
 
-![Version](https://img.shields.io/badge/preview-0.12.4-3b82f6?style=flat-square)
+![Version](https://img.shields.io/badge/preview-0.13.0-3b82f6?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Windows_11_x64-64748b?style=flat-square)
 ![Stack](https://img.shields.io/badge/C%23-.NET_10_%2B_WinUI_3-14b8a6?style=flat-square)
 
@@ -48,13 +48,13 @@ it does not replace BIOS or EC firmware.
 | Fn / Windows key lock / touchpad | Implemented and validated | Firmware state is read when returning to the page and after writes; Windows key round-trip and navigation checks passed |
 | GPU output mode | Implemented | `0=hybrid`, `1=discrete GPU`; read/write confirmation, reboot required |
 | Standard keyboard lighting | Validated on hardware | Nine hardware effects and custom RGB lighting; applicable palette, direction, brightness, speed, and length controls |
-| Screen / audio lighting | Implemented and validated | Screen-average color; playback/microphone source, 17-band FFT preview and four gradient palettes drive uniform RGB. Per-key output remains unfinished |
+| Screen / audio lighting | Implemented and validated | Screen-average color; playback/microphone source, 17-band FFT preview and four gradient palettes drive uniform RGB. Per-key output is available after the display check |
 | Startup restoration | Implemented | Performance mode and saved keyboard lighting; full reboot validation remains pending |
 | Close prompt and system tray | Implemented | Exit / run in background / cancel; optional remembered choice, editable in Settings |
 | Start with Windows | Implemented | Elevated task at current-user logon; optional background startup |
 | WLAN acceleration | Status reading | Uses the vendor Xiaomi router acceleration status; no forced toggle |
 | Custom fan curves / fixed RPM | Not implemented | A safely verifiable write protocol has not been established |
-| Per-key image mapping / keyboard spectrum bars / chassis lighting | Not implemented | Current screen and audio effects use uniform keyboard color; the vendor's full visuals are not reproduced |
+| Per-key screen mapping / keyboard spectrum bars | Implemented; visual confirmation required | 7×17 mapping, four directions and four palettes; run the reversible display check first |
 
 Hardware validation applies to the recorded machine and software versions. It does not establish
 compatibility with every configuration. See the [validation record](docs/verification.md) for the boundaries.
@@ -68,6 +68,7 @@ compatibility with every configuration. See the [validation record](docs/verific
 - Lighting writes back up the original state, verify changes, and restore the backup on failure.
 - Successfully applied lighting settings are remembered; startup restoration can be disabled separately.
 - Twelve lighting modes; stopping a screen/audio effect or exiting restores the previous standard effect. Animation frames are not committed to keyboard flash.
+- Run the reversible display check once to enable [per-key mapping and spectrum bars](docs/keyboard-realtime.md).
 - Closing the window offers exit or background operation. The choice can be remembered and reset in Settings.
 - Click the tray icon to restore the window, or use its context menu to exit. Opening the installed launcher again also restores the window.
 - Settings can disable logon startup or enable background startup. Manual launches show the main window.
@@ -87,8 +88,8 @@ compatibility with every configuration. See the [validation record](docs/verific
 
 ### Installation
 
-Download `GProControl-0.12.4-Setup-x64.exe` from the
-[v0.12.4 prerelease](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.12.4).
+Download `GProControl-0.13.0-Setup-x64.exe` from the
+[v0.13.0 prerelease](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.13.0).
 Its English/Chinese Inno Setup wizard bundles the .NET and Windows App SDK runtimes.
 Installer binaries are distributed as release assets and excluded from Git source history.
 

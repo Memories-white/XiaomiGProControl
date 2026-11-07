@@ -11,6 +11,7 @@ public sealed partial class LightingPage : Page
     private bool _busy, _updating, _loaded, _approved;
     private int _parameterEffect = -1;
     private readonly DispatcherTimer _previewTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
+    private CancellationTokenSource? _testCancellation;
     public LightingPage()
     {
         InitializeComponent();
@@ -21,7 +22,12 @@ public sealed partial class LightingPage : Page
         if(options is null || !options.IsValid) options=new();
         AudioSourceBox.SelectedIndex=options.AudioSource; AudioStyleBox.SelectedIndex=options.AudioStyle;
         AudioPaletteBox.SelectedIndex=options.AudioPalette; ScreenSamplesSlider.Value=options.ScreenSamples;
-        _previewTimer.Tick += (_,_) => SpectrumList.ItemsSource=App.AmbientLighting.SpectrumBands.Select(band => (double)Math.Max(1,band*55)).ToArray();
+        OutputModeBox.SelectedIndex=options.PerKeyOutput && App.Settings.Current.RealtimeLightingValidated ? 1 : 0;
+        SpectrumDirectionBox.SelectedIndex=options.SpectrumDirection;
+        _previewTimer.Tick += (_,_) => {
+            SpectrumList.ItemsSource=App.AmbientLighting.SpectrumBands.Select(band => (double)Math.Max(1,band*55)).ToArray();
+            if(_testCancellation is null) ShowMatrix(App.AmbientLighting.MatrixPreview);
+        };
         Loaded += async (_, _) => {
             _loaded = true;
             _previewTimer.Start();
@@ -32,6 +38,7 @@ public sealed partial class LightingPage : Page
         Unloaded += (_, _) => {
             _loaded = false;
             _previewTimer.Stop();
+            _testCancellation?.Cancel();
             App.AmbientLighting.Changed -= OnAmbientChanged;
             App.HardwareControl.StateChanged -= OnHardwareChanged;
         };
@@ -85,6 +92,7 @@ public sealed partial class LightingPage : Page
             var options=App.AmbientLighting.Options;
             AudioSourceBox.SelectedIndex=options.AudioSource; AudioStyleBox.SelectedIndex=options.AudioStyle;
             AudioPaletteBox.SelectedIndex=options.AudioPalette; ScreenSamplesSlider.Value=options.ScreenSamples;
+            OutputModeBox.SelectedIndex=options.PerKeyOutput ? 1 : 0; SpectrumDirectionBox.SelectedIndex=options.SpectrumDirection;
             BrightnessComboBox.SelectedIndex=App.AmbientLighting.Brightness;
             var rgb=Convert.FromHexString(App.AmbientLighting.SelectedColor);
             EffectColor.Color=Windows.UI.Color.FromArgb(255,(byte)(rgb[0]*2),(byte)(rgb[1]*2),(byte)(rgb[2]*2));
@@ -107,6 +115,64 @@ public sealed partial class LightingPage : Page
     {
         if (!_busy && EffectSelector.SelectedItem is LightingEffectChoice choice) LoadPreset(LightingPresetCatalog.ForEffect(choice.Id));
     }
+    private void ShowMatrix(IReadOnlyList<KeyboardPixel> pixels)
+    {
+        MatrixPreviewPanel.Visibility=pixels.Count==0 ? Visibility.Collapsed : Visibility.Visible;
+        MatrixPreviewList.ItemsSource=pixels.Select(pixel=>new SolidColorBrush(Windows.UI.Color.FromArgb(255,pixel.Red,pixel.Green,pixel.Blue))).ToArray();
+    }
+    private void OutputMode_Changed(object sender,SelectionChangedEventArgs e)
+    {
+        if(_updating || SpectrumDirectionBox is null) return;
+        if(OutputModeBox.SelectedIndex==1 && !App.Settings.Current.RealtimeLightingValidated)
+        {
+            OutputModeBox.SelectedIndex=0;
+            Notice("请先校验逐键显示","点击校验按钮，确认颜色分区和光带正常后即可使用。",InfoBarSeverity.Warning);
+        }
+        SpectrumDirectionBox.IsEnabled=!_busy && OutputModeBox.SelectedIndex==1;
+    }
+    private async void ValidateRealtime_Click(object sender,RoutedEventArgs e)
+    {
+        if(_busy || !RealtimeTestButton.IsEnabled) return;
+        _busy=true; UpdateControls();
+        _testCancellation=new();
+        try
+        {
+            var window=App.MainWindow ?? throw new InvalidOperationException("主窗口不可用。");
+            await window.RunLightingTestAsync(RunRealtimeDiagnosticAsync,_testCancellation.Token);
+            if(!_loaded || window.IsExiting) return;
+            var dialog=new ContentDialog {
+                XamlRoot=XamlRoot,Title="逐键灯效显示是否正常？",
+                Content="刚才应先出现左红、中绿、右蓝，然后出现移动的白色光带。原灯效已经恢复。只有实际颜色和位置正确时才选择显示正常。",
+                PrimaryButtonText="显示正常，启用逐键输出",SecondaryButtonText="显示异常",CloseButtonText="稍后再试"
+            };
+            var result=await dialog.ShowAsync();
+            if(result is ContentDialogResult.Primary or ContentDialogResult.Secondary)
+            {
+                var verified=result==ContentDialogResult.Primary;
+                App.Settings.Update(value=>value.RealtimeLightingValidated=verified);
+                OutputModeBox.SelectedIndex=verified ? 1 : 0;
+                Notice(verified ? "逐键显示已校验" : "保持统一颜色输出",verified ? "可以使用逐键屏幕映射和四方向频谱柱。" : "逐键功能未启用，原灯效已恢复。",verified ? InfoBarSeverity.Success : InfoBarSeverity.Warning);
+            }
+        }
+        catch(OperationCanceledException) {Notice("校验已取消","原灯效恢复已执行。",InfoBarSeverity.Informational);}
+        catch(Exception exception) {Notice("逐键校验未通过",exception.Message,InfoBarSeverity.Error);}
+        finally {_testCancellation.Dispose();_testCancellation=null;_busy=false;UpdateControls();ShowMatrix([]);}
+    }
+    private async Task RunRealtimeDiagnosticAsync(CancellationToken cancellationToken)
+    {
+        await App.AmbientLighting.StopAsync();
+        await using var session=await _client.StartRealtimeAsync(cancellationToken);
+        var timer=System.Diagnostics.Stopwatch.StartNew();
+        while(timer.Elapsed.TotalSeconds<16)
+        {
+            if(!App.HardwareControl.State.CanWrite) throw new InvalidOperationException("硬件控制已关闭。");
+            var seconds=timer.Elapsed.TotalSeconds;
+            Notice("正在校验逐键灯效",seconds<8 ? "请观察：左红、中绿、右蓝。结束后会恢复原灯效。" : "请观察：白色光带横向移动。结束后会恢复原灯效。",InfoBarSeverity.Informational);
+            var pixels=KeyboardPixelRenderer.DiagnosticFrame(seconds);
+            await session.WriteAsync(pixels,cancellationToken); ShowMatrix(pixels);
+            await Task.Delay(60,cancellationToken);
+        }
+    }
     private void LoadPreset(LightingPreset preset)
     {
         _updating = true;
@@ -120,6 +186,7 @@ public sealed partial class LightingPage : Page
         LengthComboBox.SelectedIndex = Math.Min(profile.LengthCode, LengthComboBox.Items.Count-1);
         if(preset.EffectId==21) {AudioSourceBox.SelectedIndex=0; AudioStyleBox.SelectedIndex=1; AudioPaletteBox.SelectedIndex=0;}
         if(preset.EffectId==22) ScreenSamplesSlider.Value=4;
+        if(preset.EffectId is 21 or 22) {OutputModeBox.SelectedIndex=App.Settings.Current.RealtimeLightingValidated ? 1 : 0;SpectrumDirectionBox.SelectedIndex=0;}
         if (profile.ColorsHex.Length == 6)
         {
             var rgb=Convert.FromHexString(profile.ColorsHex);
@@ -177,10 +244,14 @@ public sealed partial class LightingPage : Page
         EffectColor.IsEnabled = writable;
         AudioOptionsPanel.Visibility=effect==21 ? Visibility.Visible : Visibility.Collapsed;
         ScreenOptionsPanel.Visibility=effect==22 ? Visibility.Visible : Visibility.Collapsed;
+        OutputOptionsPanel.Visibility=effect is 21 or 22 ? Visibility.Visible : Visibility.Collapsed;
+        OutputModeBox.IsEnabled=RealtimeTestButton.IsEnabled=writable;
+        SpectrumDirectionBox.IsEnabled=writable && OutputModeBox.SelectedIndex==1;
+        RealtimeStatusText.Text=App.Settings.Current.RealtimeLightingValidated ? "逐键显示已校验；动画不写入闪存，停止后恢复原灯效。" : "先观察颜色分区及光带，校验后开放逐键输出。";
         AudioSourceBox.IsEnabled=AudioStyleBox.IsEnabled=AudioPaletteBox.IsEnabled=ScreenSamplesSlider.IsEnabled=writable;
         EffectDescription.Text = effect switch {
-            21 => "支持系统声音或麦克风、17 段频谱预览与混色；键盘仍为整片统一色。退出后恢复原灯效。",
-            22 => "根据主屏幕平均颜色实时调整键盘，不保存或上传屏幕画面；退出后恢复常规灯效。",
+            21 => "支持系统声音或麦克风；统一混色或四方向逐键频谱柱。退出后恢复原灯效。",
+            22 => "支持主屏幕平均色或逐键屏幕映射，不保存或上传屏幕画面；退出后恢复原灯效。",
             23 => "使用自选颜色常亮，可调整亮度。",
             _ => "不适用于当前效果的参数已停用。应用后会保存，并记住下次启动要恢复的配置。"
         };
@@ -214,6 +285,14 @@ public sealed partial class LightingPage : Page
             if (SelectedProfile() != preset.Profile) throw new InvalidOperationException("Reset defaults failed.");
         }
         StartupDiagnostics.Write("Factory preset UI smoke: cards=12; defaults=True; palettes=True; reset=True; hardwareWrites=False");
+        LoadPreset(LightingPresetCatalog.ForEffect(21));
+        OutputModeBox.SelectedIndex=1;
+        if(!App.Settings.Current.RealtimeLightingValidated && OutputModeBox.SelectedIndex!=0)
+            throw new InvalidOperationException("Unconfirmed per-key output was enabled.");
+        ShowMatrix(KeyboardPixelRenderer.DiagnosticFrame(0));
+        if(MatrixPreviewList.Items.Count!=119) throw new InvalidOperationException("Matrix preview is incomplete.");
+        ShowMatrix([]);
+        StartupDiagnostics.Write("Per-key controls UI smoke: matrix=119; calibrationGate=True; noHardwareWrites=True");
     }
     private async void Apply_Click(object sender, RoutedEventArgs e)
     {
@@ -223,7 +302,7 @@ public sealed partial class LightingPage : Page
             var effect = ((LightingEffectChoice)EffectSelector.SelectedItem).Id;
             var profile = SelectedProfile();
             if (effect is 21 or 22) {
-                var options=new AmbientLightingOptions(AudioSourceBox.SelectedIndex,AudioStyleBox.SelectedIndex,AudioPaletteBox.SelectedIndex,(int)ScreenSamplesSlider.Value);
+                var options=new AmbientLightingOptions(AudioSourceBox.SelectedIndex,AudioStyleBox.SelectedIndex,AudioPaletteBox.SelectedIndex,(int)ScreenSamplesSlider.Value,OutputModeBox.SelectedIndex==1,SpectrumDirectionBox.SelectedIndex);
                 await App.AmbientLighting.StartAsync(effect, profile.BrightnessCode, profile.ColorsHex,options);
                 App.Settings.Update(value => value.AmbientLighting=options);
                 Notice("动态灯效已启动", "停止动态灯效或退出软件后恢复原来的常规效果。", InfoBarSeverity.Success);

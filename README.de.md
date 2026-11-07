@@ -10,7 +10,7 @@
 
 Eine übersichtliche Oberfläche, geprüfte Hardwareprotokolle und nachvollziehbare Reverse-Engineering-Dokumentation.
 
-![Version](https://img.shields.io/badge/preview-0.12.4-3b82f6?style=flat-square)
+![Version](https://img.shields.io/badge/preview-0.13.0-3b82f6?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Windows_11_x64-64748b?style=flat-square)
 ![Stack](https://img.shields.io/badge/C%23-.NET_10_%2B_WinUI_3-14b8a6?style=flat-square)
 
@@ -48,13 +48,14 @@ diese Notebookfamilie; die Anwendung ersetzt keine BIOS- oder EC-Firmware.
 | Fn / Windows-Tastensperre / Touchpad | Implementiert und validiert | Firmwarestatus bei Rückkehr zur Seite und nach Schreibzugriffen lesen; Windows-Tasten-Rundlauf und Seitennavigation geprüft |
 | GPU-Ausgabemodus | Implementiert | `0=Hybrid`, `1=direkte Ausgabe über die dedizierte GPU`; Lese-/Schreibbestätigung, Neustart erforderlich |
 | Normale Tastaturbeleuchtung | An Hardware validiert | Neun Hardwareeffekte und frei wählbare RGB-Beleuchtung; jeweils unterstützte Palette, Richtung, Helligkeit, Geschwindigkeit und Länge |
-| Bildschirm- / Audiobeleuchtung | Implementiert und geprüft | Bildschirmmittelwert, Wiedergabe/Mikrofon, 17-Band-Vorschau und vier Farbverläufe; Tastaturausgabe weiterhin einheitliches RGB |
+| Bildschirm- / Audiobeleuchtung | Implementiert und geprüft | Bildschirmmittelwert, Wiedergabe/Mikrofon, 17-Band-Vorschau und vier Farbverläufe; Ausgabe einheitlich oder nach Sichtprüfung pro Taste |
 | Wiederherstellung beim Start | Implementiert | Leistungsprofil und gespeicherte Tastaturbeleuchtung; vollständige Neustartprüfung noch ausstehend |
 | Schließdialog und Infobereich | Implementiert | Beenden / im Hintergrund ausführen / abbrechen; Auswahl optional merken und in den Einstellungen ändern |
 | Mit Windows starten | Implementiert | Aufgabe mit erhöhten Rechten bei Anmeldung des aktuellen Benutzers; optionaler Hintergrundstart |
 | WLAN-Beschleunigung | Statusabfrage | Status der Xiaomi-Router-Beschleunigung über den Herstellerpfad; kein erzwungener Schalter |
 | Eigene Lüfterkurven / feste RPM | Nicht implementiert | Ein sicher überprüfbares Schreibprotokoll ist noch nicht bekannt |
-| Bildzuordnung pro Taste / Audiospektrum / Gehäusebeleuchtung | Nicht implementiert | Bildschirm- und Audioeffekte verwenden derzeit eine einheitliche Tastaturfarbe; die vollständige Herstellerdarstellung wird nicht nachgebildet |
+| Bildschirmabbildung pro Taste / Spektrumbalken | Implementiert; Sichtprüfung erforderlich | 7×17-Matrix, vier Richtungen und Paletten; Aktivierung nach wiederherstellbarem Anzeigetest |
+| Gehäusebeleuchtung | Nicht implementiert | Nicht Teil dieses Tastatur-Updates |
 
 Hardwarevalidierung gilt für das dokumentierte Gerät und die getesteten Softwareversionen. Daraus folgt
 keine Kompatibilität mit jeder Konfiguration. Die Grenzen stehen im [Validierungsprotokoll](docs/verification.md).
@@ -87,8 +88,8 @@ keine Kompatibilität mit jeder Konfiguration. Die Grenzen stehen im [Validierun
 
 ### Installation
 
-Die aktuelle Vorschau heißt `GProControl-0.12.4-Setup-x64.exe` und steht in der
-[Vorabveröffentlichung v0.12.4](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.12.4) bereit.
+Die aktuelle Vorschau heißt `GProControl-0.13.0-Setup-x64.exe` und steht in der
+[Vorabveröffentlichung v0.13.0](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.13.0) bereit.
 Der englische/chinesische Inno-Setup-Assistent enthält die .NET- und Windows-App-SDK-Laufzeitumgebungen.
 Installerdateien gehören zu den Release-Anhängen und werden nicht im Git-Quellverlauf gespeichert.
 

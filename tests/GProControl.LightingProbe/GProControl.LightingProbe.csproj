@@ -7,6 +7,11 @@
     <RootNamespace>GProControl.LightingProbe</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\..\GProControl\Services\ScreenLightingSampler.cs" Link="Services\ScreenLightingSampler.cs" />
+    <Compile Include="..\..\GProControl\Services\B21RealtimeSession.cs" Link="Services\B21RealtimeSession.cs" />
+    <Compile Include="..\..\GProControl\Models\KeyboardPixel.cs" Link="Models\KeyboardPixel.cs" />
+    <Compile Include="..\..\GProControl\Protocol\KeyboardPixelCodec.cs" Link="Protocol\KeyboardPixelCodec.cs" />
+    <Compile Include="..\..\GProControl\Services\KeyboardPixelRenderer.cs" Link="Services\KeyboardPixelRenderer.cs" />
     <Compile Include="..\..\GProControl\Services\AudioSpectrumReader.cs" Link="Services\AudioSpectrumReader.cs" />
     <Compile Include="..\..\GProControl\Models\AmbientLightingOptions.cs" Link="Models\AmbientLightingOptions.cs" />
     <Compile Include="..\..\GProControl\Models\LightingPreset.cs" Link="Models\LightingPreset.cs" />

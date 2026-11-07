@@ -3,7 +3,7 @@ using GProControl.Models;
 
 namespace GProControl.Services;
 
-internal sealed class AmbientLightingService(Func<bool> canWrite)
+internal sealed class AmbientLightingService(Func<bool> canWrite,Func<bool>? canUseRealtime = null)
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private CancellationTokenSource? _cancellation;
@@ -14,6 +14,7 @@ internal sealed class AmbientLightingService(Func<bool> canWrite)
     public byte Brightness { get; private set; } = 2;
     public string SelectedColor { get; private set; } = "7F0000";
     public float[] SpectrumBands { get; private set; } = new float[17];
+    public KeyboardPixel[] MatrixPreview { get; private set; } = [];
     public event Action? Changed;
 
     public async Task StartAsync(int effect, byte brightness, string color, AmbientLightingOptions? options = null)
@@ -23,12 +24,14 @@ internal sealed class AmbientLightingService(Func<bool> canWrite)
         if (!options.IsValid || brightness>3 || color.Length!=6 || !color.All(Uri.IsHexDigit)
             || Convert.FromHexString(color).Any(value=>value>127)) throw new ArgumentOutOfRangeException(nameof(options));
         if (!canWrite()) throw new InvalidOperationException("请先启用硬件控制。");
+        if(options.PerKeyOutput && canUseRealtime?.Invoke()!=true) throw new InvalidOperationException("请先完成逐键灯效显示测试。");
         await _gate.WaitAsync();
         try
         {
             await StopCoreAsync();
             var client = new B21HidClient();
-            var original = await client.ReadCommandAsync(1, TimeSpan.FromSeconds(2));
+            var original = options.PerKeyOutput ? null : await client.ReadCommandAsync(1, TimeSpan.FromSeconds(2));
+            if(original is not null && original[5]==0) throw new InvalidOperationException("请先停止其他程序中的逐键灯效。");
             _cancellation = new CancellationTokenSource();
             LastError = null;
             ActiveEffect = effect;
@@ -38,12 +41,32 @@ internal sealed class AmbientLightingService(Func<bool> canWrite)
             _worker = Task.Run(async () =>
             {
                 AudioSpectrumReader? audio = null;
+                B21HidClient.RealtimeSession? realtime = null;
                 try
                 {
                     if (effect == 21) audio = new AudioSpectrumReader(options.AudioSource == 1);
+                    if(options.PerKeyOutput) realtime=await client.StartRealtimeAsync(cancellation);
                     while (!cancellation.IsCancellationRequested)
                     {
-                        if (!canWrite()) break;
+                        if (!canWrite() || options.PerKeyOutput && canUseRealtime?.Invoke()!=true) break;
+                        if(realtime is not null)
+                        {
+                            KeyboardPixel[] pixels;
+                            if(effect==22) pixels=KeyboardPixelRenderer.MapScreenColors(ScreenLightingSampler.Capture(options.ScreenSamples),brightness);
+                            else
+                            {
+                                var bands=audio!.ReadBands(); SpectrumBands=bands;
+                                if(options.AudioStyle==1) pixels=KeyboardPixelRenderer.Spectrum(bands,options.AudioPalette,options.SpectrumDirection,brightness);
+                                else
+                                {
+                                    var channels=Convert.FromHexString(AudioColor(bands.Max(),color));
+                                    pixels=KeyboardPixelRenderer.MapScreenColors(Enumerable.Range(0,119).Select(index=>new KeyboardPixel((byte)index,(byte)(channels[0]*2),(byte)(channels[1]*2),(byte)(channels[2]*2))).ToArray(),brightness);
+                                }
+                            }
+                            await realtime.WriteAsync(pixels,cancellation); MatrixPreview=pixels;
+                            await Task.Delay(40,cancellation);
+                            continue;
+                        }
                         string rgb;
                         if(effect==22) rgb=SampleScreen(options.ScreenSamples);
                         else
@@ -63,10 +86,14 @@ internal sealed class AmbientLightingService(Func<bool> canWrite)
                 finally
                 {
                     audio?.Dispose();
-                    try { await client.RestoreCapturedAsync(original, TimeSpan.FromSeconds(2)); }
+                    try {
+                        if(realtime is not null) await realtime.DisposeAsync();
+                        else if(original is not null) await client.RestoreCapturedAsync(original, TimeSpan.FromSeconds(2));
+                    }
                     catch (Exception exception) { LastError = "灯效恢复未确认：" + exception.Message; }
                     ActiveEffect = null;
                     SpectrumBands = new float[17];
+                    MatrixPreview=[];
                     Changed?.Invoke();
                 }
             });

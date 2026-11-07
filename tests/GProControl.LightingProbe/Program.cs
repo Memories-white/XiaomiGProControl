@@ -12,6 +12,69 @@ if (devicePath is null)
 Console.WriteLine($"device={devicePath}");
 try
 {
+    if(args.Contains("--validate-per-key-effects",StringComparer.OrdinalIgnoreCase))
+    {
+        var original=await client.ReadCommandAsync(1,TimeSpan.FromSeconds(2));
+        var ambient=new AmbientLightingService(()=>true,()=>true);
+        try
+        {
+            foreach(var (mode,options) in Enumerable.Range(0,4).Select(direction=>(21,new GProControl.Models.AmbientLightingOptions(AudioStyle:1,PerKeyOutput:true,SpectrumDirection:direction)))
+                .Concat(new[]{(22,new GProControl.Models.AmbientLightingOptions(ScreenSamples:1,PerKeyOutput:true)),(22,new GProControl.Models.AmbientLightingOptions(ScreenSamples:5,PerKeyOutput:true))}))
+            {
+                await ambient.StartAsync(mode,2,"7F0000",options);
+                await Task.Delay(1200);
+                var frame=await client.ReadCommandAsync(1,TimeSpan.FromSeconds(2));
+                if(ambient.LastError is not null || ambient.ActiveEffect!=mode || ambient.MatrixPreview.Length!=119 || frame[5]!=0)
+                    throw new InvalidOperationException($"Per-key loop failed: {ambient.LastError}");
+                if(mode==21 && options.SpectrumDirection==0)
+                {
+                    var blocked=false;
+                    try {await client.ApplyEffectAsync(new(1,0,0,2,2),true,TimeSpan.FromSeconds(2),persist:false);}
+                    catch(InvalidOperationException exception) when(exception.Message=="请先停止逐键灯效或显示校验。") {blocked=true;}
+                    if(!blocked || (await client.ReadCommandAsync(1,TimeSpan.FromSeconds(2)))[5]!=0)
+                        throw new InvalidOperationException("A standard write interrupted the realtime lease.");
+                    Console.WriteLine("standard-write-blocked-during-realtime=True");
+                }
+                var distinct=ambient.MatrixPreview.Select(pixel=>(pixel.Red,pixel.Green,pixel.Blue)).Distinct().Count();
+                Console.WriteLine($"per-key={mode}; direction={options.SpectrumDirection}; samples={options.ScreenSamples}; matrix=119; colors={distinct}; mode-confirmed=True");
+                await ambient.StopAsync();
+                if(ambient.LastError is not null) throw new InvalidOperationException(ambient.LastError);
+            }
+        }
+        finally {await ambient.StopAsync();await client.RestoreCapturedAsync(original,TimeSpan.FromSeconds(2));}
+        var final=await client.ReadCommandAsync(1,TimeSpan.FromSeconds(2));
+        var restored=final.AsSpan(4,9).SequenceEqual(original.AsSpan(4,9)) && final.AsSpan(15,48).SequenceEqual(original.AsSpan(15,48));
+        Console.WriteLine($"per-key-effects-restored={restored}; physical-color-readback=unavailable");
+        return restored ? 0 : 9;
+    }
+    if(args.Contains("--validate-realtime",StringComparer.OrdinalIgnoreCase))
+    {
+        var original=await client.ReadCommandAsync(1,TimeSpan.FromSeconds(2));
+        await using(var session=await client.StartRealtimeAsync())
+        {
+            var timer=System.Diagnostics.Stopwatch.StartNew();
+            while(timer.Elapsed.TotalSeconds<16)
+            {
+                var seconds=timer.Elapsed.TotalSeconds;
+                var column=(int)((seconds-8)*3)%17;
+                var pixels=Enumerable.Range(0,119).Select(index=> {
+                    var x=index%17;
+                    return seconds<8
+                        ? new GProControl.Models.KeyboardPixel((byte)index,x<6 ? (byte)160 : (byte)0,x is >=6 and <12 ? (byte)160 : (byte)0,x>=12 ? (byte)160 : (byte)0)
+                        : new GProControl.Models.KeyboardPixel((byte)index,x==column ? (byte)160 : (byte)0,x==column ? (byte)160 : (byte)0,x==column ? (byte)160 : (byte)0);
+                }).ToArray();
+                await session.WriteAsync(pixels);
+                await Task.Delay(60);
+            }
+            var mode=await client.ReadCommandAsync(1,TimeSpan.FromSeconds(2));
+            if(mode[5]!=0) throw new InvalidOperationException("Realtime mode was not retained.");
+            Console.WriteLine($"realtime-mode=True; frames-written={session.FramesWritten}; color-readback=unavailable");
+        }
+        var final=await client.ReadCommandAsync(1,TimeSpan.FromSeconds(2));
+        var restored=final.AsSpan(4,9).SequenceEqual(original.AsSpan(4,9)) && final.AsSpan(15,48).SequenceEqual(original.AsSpan(15,48));
+        Console.WriteLine($"realtime-restored={restored}");
+        return restored ? 0 : 9;
+    }
     if (args.Contains("--validate-factory-presets", StringComparer.OrdinalIgnoreCase))
     {
         var timeout = TimeSpan.FromSeconds(2);

@@ -10,7 +10,7 @@ public partial class App : Application
     public static MainWindow? MainWindow { get; private set; }
     public static IHardwareControlService HardwareControl { get; } = new XiaomiHardwareControlService();
     public static AppSettingsStore Settings { get; } = new();
-    internal static AmbientLightingService AmbientLighting { get; } = new(() => HardwareControl.State.CanWrite);
+    internal static AmbientLightingService AmbientLighting { get; } = new(() => HardwareControl.State.CanWrite,() => Settings.Current.RealtimeLightingValidated);
     public static string StartupRestoreMessage { get; private set; } = "尚未执行启动恢复。";
     public static string LightingRestoreMessage { get; private set; } = "尚未恢复灯效。";
     public static bool GraphicModeRestartPending { get; set; }
