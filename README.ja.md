@@ -10,7 +10,7 @@
 
 シンプルな画面、実機で検証したハードウェアプロトコル、追跡可能な解析記録。
 
-![Version](https://img.shields.io/badge/preview-0.12.2-3b82f6?style=flat-square)
+![Version](https://img.shields.io/badge/preview-0.12.3-3b82f6?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Windows_11_x64-64748b?style=flat-square)
 ![Stack](https://img.shields.io/badge/C%23-.NET_10_%2B_WinUI_3-14b8a6?style=flat-square)
 
@@ -19,6 +19,8 @@
 </div>
 
 ---
+
+
 
 ## プロジェクトについて
 
@@ -31,6 +33,8 @@ C#、WinUI 3、Mica 背景で日常的な操作を再実装しています。プ
 BIOS や EC ファームウェアを置き換えるものではありません。
 
 ## 機能の状態
+
+- 工場出荷時のプリセットカードと初期値、7 色の単色、3 種類のグラデーション、初期値に戻す操作。
 
 | 機能 | 状態 | 実装内容 |
 | --- | --- | --- |
@@ -81,8 +85,8 @@ BIOS や EC ファームウェアを置き換えるものではありません�
 
 ### インストール
 
-`GProControl-0.12.2-Setup-x64.exe` は
-[v0.12.2 プレリリース](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.12.2)
+`GProControl-0.12.3-Setup-x64.exe` は
+[v0.12.3 プレリリース](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.12.3)
 からダウンロードできます。英語・中国語の Inno Setup ウィザードに .NET と Windows App SDK
 ランタイムを同梱しています。インストーラーは Release の添付ファイルとして配布し、Git のソース履歴には含めません。
 

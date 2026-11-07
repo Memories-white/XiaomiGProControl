@@ -19,7 +19,7 @@
   <g font-family="Segoe UI,Arial,sans-serif" font-size="13" fill="#b6c7da">
     <rect x="66" y="253" width="124" height="31" rx="15.5" fill="#ffffff" fill-opacity=".06"/><text x="87" y="274">WINDOWS 11</text>
     <rect x="201" y="253" width="105" height="31" rx="15.5" fill="#ffffff" fill-opacity=".06"/><text x="222" y="274">WINUI 3</text>
-    <rect x="317" y="253" width="144" height="31" rx="15.5" fill="#55e3bd" fill-opacity=".10"/><text x="337" y="274" fill="#74e4c6">PREVIEW 0.12.2</text>
+    <rect x="317" y="253" width="144" height="31" rx="15.5" fill="#55e3bd" fill-opacity=".10"/><text x="337" y="274" fill="#74e4c6">PREVIEW 0.12.3</text>
   </g>
   <g transform="translate(840 65)">
     <rect width="360" height="210" rx="20" fill="#1d3148" stroke="#6688b8" stroke-opacity=".25"/>

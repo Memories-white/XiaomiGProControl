@@ -12,6 +12,47 @@ if (devicePath is null)
 Console.WriteLine($"device={devicePath}");
 try
 {
+    if (args.Contains("--validate-factory-presets", StringComparer.OrdinalIgnoreCase))
+    {
+        var timeout = TimeSpan.FromSeconds(2);
+        var original = await client.ReadCommandAsync(1, timeout);
+        try
+        {
+            foreach (var preset in GProControl.Models.LightingPresetCatalog.All.Where(p => p.IsHardwarePreset))
+            {
+                await client.ApplyEffectAsync(preset.Profile, true, timeout);
+                Console.WriteLine($"factory-preset={preset.EffectId}; verified=True");
+            }
+            foreach (byte effect in new byte[] {2,3,5,10,11})
+            foreach (byte palette in new byte[] {0,1,2,3,4,5,6})
+            {
+                await client.ApplyEffectAsync(new(effect,palette,0,2,2,effect == 3 ? (byte)1 : (byte)0), true, timeout);
+                Console.WriteLine($"solid-effect={effect}; palette={palette}; verified=True");
+            }
+            foreach (byte effect in new byte[] {1,6,7,8})
+            foreach (byte palette in new byte[] {0,1,2})
+            {
+                await client.ApplyEffectAsync(new(effect,palette,0,2,2,effect is 6 or 8 ? (byte)1 : (byte)0), true, timeout);
+                Console.WriteLine($"gradient-effect={effect}; palette={palette}; verified=True");
+            }
+            foreach (byte effect in new byte[] {3,6,8})
+            foreach (byte length in effect == 8 ? new byte[] {0,1} : new byte[] {0,1,2})
+            {
+                await client.ApplyEffectAsync(new(effect,0,0,2,2,length), true, timeout);
+                Console.WriteLine($"length-effect={effect}; length={length}; verified=True");
+            }
+        }
+        finally
+        {
+            await client.RestoreCapturedAsync(original, timeout);
+            var restored = await client.ReadCommandAsync(1, timeout);
+            var matches = restored.AsSpan(4,9).SequenceEqual(original.AsSpan(4,9))
+                && restored.AsSpan(15,48).SequenceEqual(original.AsSpan(15,48));
+            Console.WriteLine($"factory-restored={matches}");
+            if (!matches) throw new InvalidDataException("Original keyboard state was not restored.");
+        }
+        return 0;
+    }
     if (args.Contains("--validate-ambient", StringComparer.OrdinalIgnoreCase))
     {
         var original = await client.ReadCommandAsync(1, TimeSpan.FromSeconds(2));

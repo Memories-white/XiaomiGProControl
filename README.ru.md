@@ -10,7 +10,7 @@
 
 Простой интерфейс, проверенные аппаратные протоколы и документированный процесс обратной разработки.
 
-![Version](https://img.shields.io/badge/preview-0.12.2-3b82f6?style=flat-square)
+![Version](https://img.shields.io/badge/preview-0.12.3-3b82f6?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Windows_11_x64-64748b?style=flat-square)
 ![Stack](https://img.shields.io/badge/C%23-.NET_10_%2B_WinUI_3-14b8a6?style=flat-square)
 
@@ -19,6 +19,8 @@
 </div>
 
 ---
+
+
 
 ## О проекте
 
@@ -31,6 +33,8 @@ XiaomiGProControl — неофициальная новая реализация
 ноутбуков; приложение не заменяет прошивку BIOS или EC.
 
 ## Состояние функций
+
+- Карточки заводских эффектов с исходными параметрами, семь однотонных цветов, три градиента и сброс параметров.
 
 | Функция | Состояние | Реализация |
 | --- | --- | --- |
@@ -81,8 +85,8 @@ XiaomiGProControl — неофициальная новая реализация
 
 ### Установка
 
-Текущая предварительная сборка — `GProControl-0.12.2-Setup-x64.exe`, доступная в
-[предварительном выпуске v0.12.2](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.12.2).
+Текущая предварительная сборка — `GProControl-0.12.3-Setup-x64.exe`, доступная в
+[предварительном выпуске v0.12.3](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.12.3).
 Английский/китайский мастер Inno Setup включает среды выполнения .NET и Windows App SDK.
 Установщики публикуются как вложения выпуска и не сохраняются в истории исходного кода Git.
 

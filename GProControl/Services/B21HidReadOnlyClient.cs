@@ -271,7 +271,10 @@ internal sealed class B21HidClient
 
     private static void RequireEffectState(byte[] actual, byte[] target)
     {
-        var fields = new List<int> {4, 5, 6, 8, 12};
+        var fields = new List<int> {4, 5, 6, 12};
+        // Firefly exposes no brightness control in the vendor UI; firmware retains
+        // the previous brightness byte rather than accepting a new value here.
+        if (target[5] != 10) fields.Add(8);
         if (target[5] is 1 or 6 or 7) fields.Add(7);
         if (target[5] is 1 or 3 or 6 or 7 or 8) fields.Add(9);
         if (target[5] is 3 or 6 or 8) fields.Add(11);
@@ -281,6 +284,7 @@ internal sealed class B21HidClient
             || target[6] == 8 && !actual.AsSpan(15, 48).SequenceEqual(target.AsSpan(15, 48)))
             throw new InvalidDataException("键盘颜色读回不匹配。");
     }
+
 
     internal async Task RestoreCapturedAsync(byte[] original, TimeSpan timeout)
     {

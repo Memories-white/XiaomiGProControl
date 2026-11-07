@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.12.2"
+  #define AppVersion "0.12.3"
 #endif
 #ifndef SourceRoot
   #error SourceRoot must point to the classified installation payload.

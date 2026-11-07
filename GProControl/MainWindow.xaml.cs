@@ -160,6 +160,17 @@ public sealed partial class MainWindow : Window
         StartupDiagnostics.Write($"Background lifecycle smoke: hidden={hidden}; restored={restored}");
         if (Environment.GetCommandLineArgs().Contains("--device-ui-smoke")) await VerifyDeviceNavigationAsync();
         if (Environment.GetCommandLineArgs().Contains("--navigation-smoke")) await VerifyShellNavigationAsync();
+        if (Environment.GetCommandLineArgs().Contains("--lighting-preset-smoke"))
+        {
+            try
+            {
+                NavigateTo("lighting");
+                await Task.Delay(2500);
+                ((LightingPage)ContentFrame.Content).VerifyFactoryPresets();
+            }
+            catch (Exception exception) { StartupDiagnostics.Write("Factory preset UI smoke failed.", exception); }
+            finally { Close(); }
+        }
     }
 
     private async Task VerifyShellNavigationAsync()

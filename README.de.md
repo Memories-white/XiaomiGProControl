@@ -10,7 +10,7 @@
 
 Eine übersichtliche Oberfläche, geprüfte Hardwareprotokolle und nachvollziehbare Reverse-Engineering-Dokumentation.
 
-![Version](https://img.shields.io/badge/preview-0.12.2-3b82f6?style=flat-square)
+![Version](https://img.shields.io/badge/preview-0.12.3-3b82f6?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Windows_11_x64-64748b?style=flat-square)
 ![Stack](https://img.shields.io/badge/C%23-.NET_10_%2B_WinUI_3-14b8a6?style=flat-square)
 
@@ -19,6 +19,8 @@ Eine übersichtliche Oberfläche, geprüfte Hardwareprotokolle und nachvollziehb
 </div>
 
 ---
+
+
 
 ## Über das Projekt
 
@@ -31,6 +33,8 @@ Kompatible Herstellerdienste und Treiber werden benötigt. Der unterstützte Umf
 diese Notebookfamilie; die Anwendung ersetzt keine BIOS- oder EC-Firmware.
 
 ## Funktionsstatus
+
+- Werksvoreinstellungen als Karten mit Standardwerten, sieben Einzelfarben, drei Farbverläufen und einer Rücksetzfunktion.
 
 | Funktion | Status | Umsetzung |
 | --- | --- | --- |
@@ -81,8 +85,8 @@ keine Kompatibilität mit jeder Konfiguration. Die Grenzen stehen im [Validierun
 
 ### Installation
 
-Die aktuelle Vorschau heißt `GProControl-0.12.2-Setup-x64.exe` und steht in der
-[Vorabveröffentlichung v0.12.2](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.12.2) bereit.
+Die aktuelle Vorschau heißt `GProControl-0.12.3-Setup-x64.exe` und steht in der
+[Vorabveröffentlichung v0.12.3](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.12.3) bereit.
 Der englische/chinesische Inno-Setup-Assistent enthält die .NET- und Windows-App-SDK-Laufzeitumgebungen.
 Installerdateien gehören zu den Release-Anhängen und werden nicht im Git-Quellverlauf gespeichert.
 

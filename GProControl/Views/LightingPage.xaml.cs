@@ -2,16 +2,19 @@ using GProControl.Models;
 using GProControl.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 namespace GProControl.Views;
 public sealed partial class LightingPage : Page
 {
     private readonly B21HidClient _client = new();
     private KeyboardLightingState? _state;
     private bool _busy, _updating, _loaded, _approved;
+    private int _parameterEffect = -1;
     public LightingPage()
     {
         InitializeComponent();
-        _updating = true; EffectSelector.ItemsSource = LightingEffectChoice.All; _updating = false;
+        _updating = true; EffectSelector.ItemsSource = LightingEffectChoice.All;
+        PresetList.ItemsSource = LightingPresetCatalog.All; _updating = false;
         Loaded += async (_, _) => {
             _loaded = true;
             App.AmbientLighting.Changed += OnAmbientChanged;
@@ -58,11 +61,12 @@ public sealed partial class LightingPage : Page
         var saved = LightingProfile.FromState(state) ?? App.Settings.Current.LastLightingProfile;
         var id = App.AmbientLighting.ActiveEffect ?? (saved?.PaletteCode == 0xFF ? 23 : saved?.EffectCode ?? 1);
         EffectSelector.SelectedItem = LightingEffectChoice.All.FirstOrDefault(effect => effect.Id == id);
-        PaletteComboBox.SelectedIndex = Math.Clamp((int)(saved?.PaletteCode ?? 0), 0, 2);
-        DirectionComboBox.SelectedIndex = Math.Clamp((int)(saved?.DirectionCode ?? 0), 0, 2);
+        ConfigureParameterChoices(id);
+        PaletteComboBox.SelectedIndex = Math.Clamp((int)(saved?.PaletteCode ?? 0), 0, PaletteComboBox.Items.Count-1);
+        DirectionComboBox.SelectedIndex = Math.Clamp((int)(saved?.DirectionCode ?? 0), 0, DirectionComboBox.Items.Count-1);
         BrightnessComboBox.SelectedIndex = Math.Clamp((int)(saved?.BrightnessCode ?? 3), 0, 3);
         SpeedComboBox.SelectedIndex = Math.Clamp((saved?.SpeedCode ?? 1)-1, 0, 2);
-        LengthComboBox.SelectedIndex = Math.Clamp((saved?.LengthCode ?? 1)-1, 0, 1);
+        LengthComboBox.SelectedIndex = Math.Clamp((int)(saved?.LengthCode ?? 1), 0, LengthComboBox.Items.Count-1);
         if (saved is { PaletteCode: 0xFF, ColorsHex.Length: 6 }) {
             var rgb = Convert.FromHexString(saved.ColorsHex);
             EffectColor.Color = Windows.UI.Color.FromArgb(255, (byte)(rgb[0]*2), (byte)(rgb[1]*2), (byte)(rgb[2]*2));
@@ -75,16 +79,74 @@ public sealed partial class LightingPage : Page
     }
     private void Effect_Changed(object sender, SelectionChangedEventArgs e) {
         if (_updating) return;
+        if (EffectSelector.SelectedItem is LightingEffectChoice choice) LoadPreset(LightingPresetCatalog.ForEffect(choice.Id));
+    }
+    private void Preset_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_busy && sender is Button { DataContext: LightingPreset preset }) LoadPreset(preset);
+    }
+    private void ResetPreset_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_busy && EffectSelector.SelectedItem is LightingEffectChoice choice) LoadPreset(LightingPresetCatalog.ForEffect(choice.Id));
+    }
+    private void LoadPreset(LightingPreset preset)
+    {
+        _updating = true;
+        EffectSelector.SelectedItem = LightingEffectChoice.All.First(choice => choice.Id == preset.EffectId);
+        ConfigureParameterChoices(preset.EffectId);
+        var profile = preset.Profile;
+        PaletteComboBox.SelectedIndex = profile.PaletteCode == 255 ? 0 : profile.PaletteCode;
+        DirectionComboBox.SelectedIndex = Math.Min(profile.DirectionCode, DirectionComboBox.Items.Count-1);
+        BrightnessComboBox.SelectedIndex = profile.BrightnessCode;
+        SpeedComboBox.SelectedIndex = Math.Max(0, profile.SpeedCode-1);
+        LengthComboBox.SelectedIndex = Math.Min(profile.LengthCode, LengthComboBox.Items.Count-1);
+        if (profile.ColorsHex.Length == 6)
+        {
+            var rgb=Convert.FromHexString(profile.ColorsHex);
+            EffectColor.Color=Windows.UI.Color.FromArgb(255,(byte)(rgb[0]*2),(byte)(rgb[1]*2),(byte)(rgb[2]*2));
+        }
+        _updating = false;
         UpdateControls();
-        if (EffectSelector.SelectedItem is LightingEffectChoice choice) LightingPreviewText.Text = choice.Name + " · 待应用";
+        LightingPreviewText.Text = preset.Name + " · 预设待应用";
+        Notice("已载入“"+preset.Name+"”预设", "已填入原厂默认参数，点击“应用灯效”生效。", InfoBarSeverity.Informational);
+    }
+    private void ConfigureParameterChoices(int effect)
+    {
+        if (_parameterEffect == effect) return;
+        _parameterEffect = effect;
+        PaletteComboBox.Items.Clear();
+        foreach (var palette in LightingPresetCatalog.PalettesFor(effect))
+        {
+            Brush brush = new SolidColorBrush(ParseColor(palette.PreviewColor));
+            if (palette.Stops is { } stops)
+            {
+                var gradient = new LinearGradientBrush {StartPoint=new Windows.Foundation.Point(0,0),EndPoint=new Windows.Foundation.Point(1,0)};
+                foreach(var stop in stops) gradient.GradientStops.Add(new GradientStop {Color=ParseColor(stop.Color),Offset=stop.Offset});
+                brush=gradient;
+            }
+            var row=new StackPanel {Orientation=Orientation.Horizontal,Spacing=8};
+            row.Children.Add(new Border {Width=40,Height=12,CornerRadius=new CornerRadius(3),Background=brush,VerticalAlignment=VerticalAlignment.Center});
+            row.Children.Add(new TextBlock {Text=palette.Name,VerticalAlignment=VerticalAlignment.Center});
+            PaletteComboBox.Items.Add(new ComboBoxItem {Content=row,Tag=palette.Code});
+        }
+        DirectionComboBox.ItemsSource = effect == 6 ? new[] {"向右","向左","往返"}
+            : effect == 7 ? new[] {"逆时针","顺时针"} : new[] {"向左","向右"};
+        LengthComboBox.ItemsSource = effect == 8 ? new[] {"短","长"}
+            : effect == 3 ? new[] {"细","正常","粗"} : effect == 6 ? new[] {"窄","正常","宽"} : new[] {"不适用"};
+        PaletteComboBox.SelectedIndex=0; DirectionComboBox.SelectedIndex=0; LengthComboBox.SelectedIndex=0;
+    }
+    private static Windows.UI.Color ParseColor(string value)
+    {
+        var color=Convert.ToUInt32(value[1..],16);
+        return Windows.UI.Color.FromArgb((byte)(color>>24),(byte)(color>>16),(byte)(color>>8),(byte)color);
     }
     private void UpdateControls()
     {
         var writable = _approved && !_busy && App.HardwareControl.State.CanWrite;
         var effect = (EffectSelector.SelectedItem as LightingEffectChoice)?.Id ?? 1;
-        var direction = Math.Max(0, DirectionComboBox.SelectedIndex);
-        DirectionComboBox.ItemsSource = effect == 6 ? new[] {"反向", "正向", "往返"} : new[] {"反向", "正向"};
-        DirectionComboBox.SelectedIndex = Math.Min(direction, effect == 6 ? 2 : 1);
+        ConfigureParameterChoices(effect);
+        PresetList.IsEnabled = !_busy;
+        ResetPresetButton.IsEnabled = !_busy && EffectSelector.SelectedItem is not null;
         EffectSelector.IsEnabled = writable;
         PaletteComboBox.IsEnabled = writable && effect < 20;
         DirectionComboBox.IsEnabled = writable && effect is 1 or 6 or 7;
@@ -110,8 +172,25 @@ public sealed partial class LightingPage : Page
         var colors = $"{color.R/2:X2}{color.G/2:X2}{color.B/2:X2}";
         return new((byte)(effect >= 20 ? 11 : effect), effect >= 20 ? (byte)0xFF : (byte)Math.Max(0,PaletteComboBox.SelectedIndex),
             (byte)Math.Max(0,DirectionComboBox.SelectedIndex), effect == 10 ? (byte)3 : (byte)Math.Max(0,BrightnessComboBox.SelectedIndex),
-            (byte)(SpeedComboBox.SelectedIndex+1), effect is 3 or 6 or 8 ? (byte)(LengthComboBox.SelectedIndex+1) : (byte)0,
+            (byte)(SpeedComboBox.SelectedIndex+1), effect is 3 or 6 or 8 ? (byte)Math.Max(0,LengthComboBox.SelectedIndex) : (byte)0,
             effect >= 20 ? colors : "");
+    }
+    internal void VerifyFactoryPresets()
+    {
+        if (PresetList.Items.Count != 12) throw new InvalidOperationException("Factory preset cards are missing.");
+        foreach (var preset in LightingPresetCatalog.All)
+        {
+            Preset_Click(new Button { DataContext = preset }, new RoutedEventArgs());
+            if (((LightingEffectChoice)EffectSelector.SelectedItem).Id != preset.EffectId
+                || SelectedProfile() != preset.Profile)
+                throw new InvalidOperationException($"Factory preset controls differ: {preset.EffectId}");
+            var count = LightingPresetCatalog.SupportsSolidPalette(preset.Profile.EffectCode) && preset.EffectId < 20 ? 7 : 3;
+            if (PaletteComboBox.Items.Count != count) throw new InvalidOperationException("Palette count differs.");
+            BrightnessComboBox.SelectedIndex = 0;
+            ResetPreset_Click(this, new RoutedEventArgs());
+            if (SelectedProfile() != preset.Profile) throw new InvalidOperationException("Reset defaults failed.");
+        }
+        StartupDiagnostics.Write("Factory preset UI smoke: cards=12; defaults=True; palettes=True; reset=True; hardwareWrites=False");
     }
     private async void Apply_Click(object sender, RoutedEventArgs e)
     {

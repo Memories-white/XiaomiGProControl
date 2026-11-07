@@ -7,6 +7,7 @@
     <RootNamespace>GProControl.LightingProbe</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\..\GProControl\Models\LightingPreset.cs" Link="Models\LightingPreset.cs" />
     <Compile Include="..\..\GProControl\Services\AmbientLightingService.cs" Link="Services\AmbientLightingService.cs" />
     <Compile Include="..\..\GProControl\Models\LightingProfile.cs" Link="Models\LightingProfile.cs" />
     <Compile Include="..\..\GProControl\Models\KeyboardLightingState.cs" Link="Models\KeyboardLightingState.cs" />

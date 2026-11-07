@@ -12,6 +12,33 @@
             <InfoBar x:Name="StatusInfoBar" IsOpen="True" Severity="Informational" Title="正在验证灯效控制"
                      Message="正在读取键盘版本和当前灯效。" />
 
+            <Border Style="{StaticResource DashboardCardStyle}">
+                <StackPanel Spacing="10">
+                    <Grid>
+                        <TextBlock Text="原厂灯效预设" Style="{StaticResource SectionTitleStyle}" />
+                        <Button x:Name="ResetPresetButton" Content="恢复当前效果默认参数" HorizontalAlignment="Right" Click="ResetPreset_Click" />
+                    </Grid>
+                    <TextBlock Text="选择预设后点击“应用灯效”生效。光影随行与光音视界目前使用基础联动。" Opacity="0.6" FontSize="12" TextWrapping="Wrap" />
+                    <ItemsControl x:Name="PresetList">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapGrid Orientation="Horizontal" MaximumRowsOrColumns="4" ItemWidth="220" ItemHeight="76" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Margin="3" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="Preset_Click">
+                                    <Grid ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="5" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                        <Border Background="{Binding PreviewColor}" CornerRadius="2" />
+                                        <StackPanel Grid.Column="1" Spacing="4">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding Summary}" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
             <Grid ColumnSpacing="18">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="1.35*" />
@@ -82,11 +109,7 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <ComboBox x:Name="PaletteComboBox" IsEnabled="False" HorizontalAlignment="Stretch">
-                                    <x:String>配色第 1 项</x:String>
-                                    <x:String>配色第 2 项</x:String>
-                                    <x:String>配色第 3 项</x:String>
-                                </ComboBox>
+                                <ComboBox x:Name="PaletteComboBox" IsEnabled="False" HorizontalAlignment="Stretch" />
                                 <ComboBox x:Name="DirectionComboBox" Grid.Column="1" IsEnabled="False" HorizontalAlignment="Stretch">
                                 </ComboBox>
                             </Grid>
@@ -110,7 +133,7 @@
                         </StackPanel>
                         <StackPanel Spacing="8">
                             <TextBlock Text="动态长度" FontWeight="SemiBold" />
-                            <ComboBox x:Name="LengthComboBox" HorizontalAlignment="Stretch"><x:String>短</x:String><x:String>长</x:String></ComboBox>
+                            <ComboBox x:Name="LengthComboBox" HorizontalAlignment="Stretch" />
                         </StackPanel>
                         <Button x:Name="ApplyButton" Content="应用灯效" Click="Apply_Click"
                                 IsEnabled="False" HorizontalAlignment="Stretch" />
