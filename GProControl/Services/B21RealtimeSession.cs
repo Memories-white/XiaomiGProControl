@@ -26,7 +26,8 @@ internal sealed partial class B21HidClient
             var target=(byte[])original.Clone(); target[5]=0; target[12]=0xB3;
             await ExchangeAsync(2,target,timeout,cancellationToken).ConfigureAwait(false);
             var actual=await ExchangeAsync(1,null,timeout,cancellationToken).ConfigureAwait(false);
-            if(actual[5]!=0 || actual[12]!=0xB3) throw new InvalidDataException("实时灯效模式未读回确认。");
+            if (actual[5] != 0 || actual[12] != 0xB3)
+                throw new InvalidDataException($"实时灯效模式未读回确认。状态：{Convert.ToHexString(actual.AsSpan(4, 9))}");
             var path=FindDevicePath() ?? throw new IOException("键盘已断开。");
             var handle=CreateFile(path,GenericRead|GenericWrite,FileShareRead|FileShareWrite,IntPtr.Zero,OpenExisting,FileFlagOverlapped,IntPtr.Zero);
             if(handle.IsInvalid) {var error=Marshal.GetLastWin32Error();handle.Dispose();throw new Win32Exception(error);}

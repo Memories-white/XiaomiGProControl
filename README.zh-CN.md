@@ -10,7 +10,7 @@
 
 轻量的界面，经过验证的硬件协议，可追溯的逆向过程。
 
-![Version](https://img.shields.io/badge/release-0.13.1-3b82f6?style=flat-square)
+![Version](https://img.shields.io/badge/release-0.13.3-3b82f6?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Windows_11_x64-64748b?style=flat-square)
 ![Stack](https://img.shields.io/badge/C%23-.NET_10_%2B_WinUI_3-14b8a6?style=flat-square)
 
@@ -86,8 +86,8 @@ XiaomiGProControl 是针对 **Redmi G Pro 2024 / TM2211** 的非官方控制中�
 
 ### 安装
 
-从 [v0.13.1 发布页面](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.13.1)
-下载 `GProControl-0.13.1-Setup-x64.exe`。安装器采用中文/英文 Inno Setup 向导，包含 .NET
+从 [v0.13.3 发布页面](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.13.3)
+下载 `GProControl-0.13.3-Setup-x64.exe`。安装器采用中文/英文 Inno Setup 向导，包含 .NET
 与 Windows App SDK 运行库。安装包通过 Release 附件分发，不存入 Git 源码历史。
 
 安装结束后可选择是否启动，默认不启动；覆盖升级结束后也会提供启动询问。

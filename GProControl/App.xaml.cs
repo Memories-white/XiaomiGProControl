@@ -15,6 +15,9 @@ public partial class App : Application
     public static string LightingRestoreMessage { get; private set; } = "尚未恢复灯效。";
     public static bool GraphicModeRestartPending { get; set; }
     public static bool IsPackageSmoke { get; } = Environment.GetCommandLineArgs().Contains("--package-smoke");
+    private static readonly TaskCompletionSource StartupPerformanceReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    internal static Task StartupPerformanceRestore => StartupPerformanceReady.Task;
+    internal static void CompleteStartupPerformanceRestore() => StartupPerformanceReady.TrySetResult();
     public static string StartupRegistrationMessage { get; private set; } = "登录 Windows 后以管理员权限自动启动。";
 
     public App()
@@ -55,6 +58,8 @@ public partial class App : Application
             }
             else
             {
+                if (!Environment.GetCommandLineArgs().Contains("--dashboard-startup-smoke"))
+                    CompleteStartupPerformanceRestore();
                 StartupDiagnostics.Write("Package smoke mode: startup registration and hardware restoration skipped.");
                 _ = MainWindow.VerifyBackgroundLifecycleAsync();
             }
@@ -68,7 +73,14 @@ public partial class App : Application
 
     private static async Task RestoreAllStartupStateAsync()
     {
-        await RestoreStartupStateAsync();
+        try
+        {
+            await RestoreStartupStateAsync();
+        }
+        finally
+        {
+            CompleteStartupPerformanceRestore();
+        }
         if (!Settings.Current.RestoreLighting)
         {
             LightingRestoreMessage = "已关闭启动时恢复灯效。";

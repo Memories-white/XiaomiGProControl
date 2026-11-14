@@ -20,6 +20,17 @@
                     <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
                     <Grid ColumnSpacing="18">
                         <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Spacing="4"><TextBlock Text="网络速率单位" FontWeight="SemiBold" /><TextBlock Text="用于设备概览中的下载和上传速度" Opacity="0.6" FontSize="12" TextWrapping="Wrap" /></StackPanel>
+                        <ComboBox x:Name="NetworkSpeedUnitSelector" Grid.Column="1" Width="152"
+                                  AutomationProperties.Name="网络速率单位"
+                                  SelectionChanged="NetworkSpeedUnitSelector_SelectionChanged">
+                            <ComboBoxItem Content="Kbps" />
+                            <ComboBoxItem Content="MB/s" />
+                        </ComboBox>
+                    </Grid>
+                    <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                    <Grid ColumnSpacing="18">
+                        <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <StackPanel Spacing="4"><TextBlock Text="点击关闭按钮时" FontWeight="SemiBold" /><TextBlock Text="可在关闭对话框中勾选“不再询问”，也可随时在这里修改" Opacity="0.6" FontSize="12" TextWrapping="Wrap" /></StackPanel>
                         <ComboBox x:Name="CloseActionSelector" Grid.Column="1" Width="152" SelectionChanged="CloseActionSelector_SelectionChanged">
                             <ComboBoxItem Content="每次询问" />

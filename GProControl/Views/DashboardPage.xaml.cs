@@ -29,10 +29,15 @@ public sealed partial class DashboardPage : Page
     {
         Refresh();
         _timer.Start();
+        await App.StartupPerformanceRestore;
+        if (!IsLoaded) return;
+
         var state = await App.HardwareControl.RefreshAsync();
+        if (!IsLoaded) return;
         if (state.CanArmWrites)
         {
             var result = await App.HardwareControl.GetPerformanceModeAsync();
+            if (!IsLoaded) return;
             if (result.Verified && result.ReadbackValue is int ecValue)
             {
                 var index = PerformanceModeCatalog.IndexOfEc(ecValue);
@@ -46,7 +51,11 @@ public sealed partial class DashboardPage : Page
             }
 
             await RefreshThermalFanAsync();
-            _sensorTimer.Start();
+            if (IsLoaded) _sensorTimer.Start();
+        }
+        else
+        {
+            DashboardModeText.Text = "原厂服务未就绪";
         }
     }
 
@@ -114,8 +123,9 @@ public sealed partial class DashboardPage : Page
         var totalDisk = ToGiB((ulong)snapshot.TotalDiskBytes);
         DiskText.Text = $"{usedDisk:0} / {totalDisk:0} GB";
         DiskBar.Value = snapshot.TotalDiskBytes == 0 ? 0 : snapshot.UsedDiskBytes * 100d / snapshot.TotalDiskBytes;
-        DownloadText.Text = $"{snapshot.DownloadKbps:0} Kbps";
-        UploadText.Text = $"{snapshot.UploadKbps:0} Kbps";
+        var showMegabytes = App.Settings.Current.ShowNetworkSpeedInMegabytes;
+        DownloadText.Text = FormatNetworkSpeed(snapshot.DownloadKbps, showMegabytes);
+        UploadText.Text = FormatNetworkSpeed(snapshot.UploadKbps, showMegabytes);
         UpdateGpu(snapshot.Gpu);
 
         if (!_bridgeCaptured)
@@ -177,6 +187,9 @@ public sealed partial class DashboardPage : Page
     }
 
     private static double ToGiB(ulong bytes) => bytes / 1024d / 1024d / 1024d;
+
+    private static string FormatNetworkSpeed(double kilobitsPerSecond, bool showMegabytes) =>
+        showMegabytes ? $"{kilobitsPerSecond / 8000d:0.00#} MB/s" : $"{kilobitsPerSecond:0} Kbps";
 
     private void OpenPerformance_Click(object sender, RoutedEventArgs e)
     {

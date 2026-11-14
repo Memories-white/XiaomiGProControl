@@ -260,8 +260,8 @@ internal sealed partial class B21HidClient
                 await ExchangeAsync(2, target, timeout, cancellationToken).ConfigureAwait(false);
                 var applied = await ExchangeAsync(1, null, timeout, cancellationToken).ConfigureAwait(false);
                 // B21 can retain the previous brightness while accepting the effect.
-                // Only accept that specific alternative for saved effects.
-                byte? retainedBrightness = enabled && persist && original[8] <= 3 ? original[8] : null;
+                // The effect and its applicable fields still need to match.
+                byte? retainedBrightness = enabled && original[8] <= 3 ? original[8] : null;
                 RequireEffectState(applied, target, retainedBrightness);
                 if (persist)
                 {
@@ -274,8 +274,10 @@ internal sealed partial class B21HidClient
             }
             catch (Exception failure)
             {
-                try { await RestoreStateAsync(original, timeout, "effect").ConfigureAwait(false); }
+                try { await RestoreStateAsync(original, timeout, "effect", persist).ConfigureAwait(false); }
                 catch (Exception rollback) { throw new AggregateException("灯效应用失败，恢复也未确认。", failure, rollback); }
+                if (failure is OperationCanceledException && cancellationToken.IsCancellationRequested)
+                    throw;
                 throw new InvalidOperationException("灯效应用失败，原始配置已恢复。", failure);
             }
         }
@@ -565,7 +567,7 @@ internal sealed partial class B21HidClient
         }
     }
 
-    private async Task RestoreStateAsync(byte[] original, TimeSpan timeout, string description)
+    private async Task RestoreStateAsync(byte[] original, TimeSpan timeout, string description, bool persist = true)
     {
         if(original[5]==0) throw new InvalidDataException("实时模式不能写入键盘闪存。");
         Exception? lastFailure = null;
@@ -578,6 +580,7 @@ internal sealed partial class B21HidClient
                 await ExchangeAsync(2, rollback, timeout, CancellationToken.None).ConfigureAwait(false);
                 var restored = await ExchangeAsync(1, null, timeout, CancellationToken.None).ConfigureAwait(false);
                 RequireEffectState(restored, original);
+                if (!persist) return;
                 await ExchangeAsync(5, null, timeout, CancellationToken.None).ConfigureAwait(false);
                 var persisted = await ExchangeAsync(1, null, timeout, CancellationToken.None).ConfigureAwait(false);
                 RequireEffectState(persisted, original);

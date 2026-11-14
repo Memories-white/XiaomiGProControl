@@ -48,6 +48,7 @@ public sealed partial class SettingsPage : Page
             "Dark" => 2,
             _ => 0
         };
+        NetworkSpeedUnitSelector.SelectedIndex = settings.ShowNetworkSpeedInMegabytes ? 1 : 0;
         StartupToggle.IsOn = StartupRegistrationService.IsEnabled();
         StartupDetail.Text = App.StartupRegistrationMessage;
         StartupBackgroundToggle.IsOn = settings.StartInBackground;
@@ -98,6 +99,13 @@ public sealed partial class SettingsPage : Page
     {
         if (_updating || CloseActionSelector.SelectedIndex is < 0 or > 2) return;
         App.Settings.Update(value => value.CloseAction = (CloseAction)CloseActionSelector.SelectedIndex);
+    }
+
+    private void NetworkSpeedUnitSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updating || NetworkSpeedUnitSelector.SelectedIndex < 0) return;
+
+        App.Settings.Update(value => value.ShowNetworkSpeedInMegabytes = NetworkSpeedUnitSelector.SelectedIndex == 1);
     }
 
     private void StartupBackgroundToggle_Toggled(object sender, RoutedEventArgs e)

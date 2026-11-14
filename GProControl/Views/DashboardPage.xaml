@@ -96,8 +96,8 @@
                         <TextBlock Text="网络" FontWeight="SemiBold" />
                         <Grid ColumnSpacing="10">
                             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
-                            <StackPanel><TextBlock Text="下载" Opacity="0.55" FontSize="12" /><TextBlock x:Name="DownloadText" Text="-- Kbps" FontSize="16" FontWeight="SemiBold" /></StackPanel>
-                            <StackPanel Grid.Column="1"><TextBlock Text="上传" Opacity="0.55" FontSize="12" /><TextBlock x:Name="UploadText" Text="-- Kbps" FontSize="16" FontWeight="SemiBold" /></StackPanel>
+                            <StackPanel><TextBlock Text="下载" Opacity="0.55" FontSize="12" /><TextBlock x:Name="DownloadText" Text="—" FontSize="16" FontWeight="SemiBold" /></StackPanel>
+                            <StackPanel Grid.Column="1"><TextBlock Text="上传" Opacity="0.55" FontSize="12" /><TextBlock x:Name="UploadText" Text="—" FontSize="16" FontWeight="SemiBold" /></StackPanel>
                         </Grid>
                     </StackPanel>
                 </Border>

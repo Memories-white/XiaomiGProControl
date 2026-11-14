@@ -85,11 +85,17 @@ public sealed partial class GraphicModeControl : UserControl
         UpdateButtons();
         try
         {
+            var confirmation = $"固件当前设置为{ModeName(_mode.Value)}。切换到{ModeName(mode)}后，必须重启 Windows 才生效。请先保存工作。";
+            if (mode == 0)
+            {
+                confirmation += "\n\n重启后，Windows 可能需要几分钟安装并加载 Intel 核显驱动。期间内屏的分辨率或刷新率可能异常，任务管理器也可能暂时只显示一个 GPU。请等待驱动安装完成后再检查。";
+            }
+
             var dialog = new ContentDialog
             {
                 XamlRoot = XamlRoot,
                 Title = $"切换到{ModeName(mode)}？",
-                Content = $"固件当前设置为{ModeName(_mode.Value)}。切换到{ModeName(mode)}后，必须重启 Windows 才生效。请先保存工作。",
+                Content = new TextBlock { Text = confirmation, TextWrapping = TextWrapping.Wrap },
                 PrimaryButtonText = "切换，稍后重启",
                 CloseButtonText = "取消",
                 DefaultButton = ContentDialogButton.Close

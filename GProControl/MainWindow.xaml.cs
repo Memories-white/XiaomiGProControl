@@ -1,4 +1,5 @@
 using GProControl.Services;
+using GProControl.Protocol;
 using GProControl.Views;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -175,6 +176,12 @@ public sealed partial class MainWindow : Window
 
     internal async Task VerifyBackgroundLifecycleAsync()
     {
+        if (Environment.GetCommandLineArgs().Contains("--dashboard-startup-smoke"))
+        {
+            await VerifyDashboardStartupAsync();
+            return;
+        }
+
         await Task.Delay(700);
         var handle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         var hidden = MoveToBackground() && !IsWindowVisible(handle);
@@ -249,6 +256,42 @@ public sealed partial class MainWindow : Window
             }
             catch(Exception exception) {StartupDiagnostics.Write("Support/details UI smoke failed.",exception);}
             finally {Close();}
+        }
+    }
+
+    private async Task VerifyDashboardStartupAsync()
+    {
+        try
+        {
+            await Task.Delay(350);
+            var dashboard = (DashboardPage)ContentFrame.Content;
+            var modeText = (TextBlock)dashboard.FindName("DashboardModeText");
+            if (modeText.Text != "等待原厂服务读回")
+                throw new InvalidOperationException("Dashboard read the mode before startup restoration completed.");
+
+            var state = await App.HardwareControl.RefreshAsync();
+            var result = await App.HardwareControl.GetPerformanceModeAsync();
+            if (!state.CanArmWrites || !result.Verified || result.ReadbackValue is not int ecValue)
+                throw new InvalidOperationException("Cannot confirm the current performance mode.");
+            var mode = PerformanceModeCatalog.All.FirstOrDefault(entry => entry.EcValue == ecValue);
+            string expected = $"{mode.Name ?? "未知模式"} · EC {ecValue}";
+
+            App.CompleteStartupPerformanceRestore();
+            for (int attempt = 0; attempt < 100 && modeText.Text != expected; attempt++)
+                await Task.Delay(100);
+            if (!ReferenceEquals(ContentFrame.Content, dashboard) || modeText.Text != expected)
+                throw new InvalidOperationException($"Dashboard expected {expected}, got {modeText.Text}.");
+
+            StartupDiagnostics.Write($"Dashboard startup smoke passed: waited for restore, displayed {expected} without navigation.");
+        }
+        catch (Exception exception)
+        {
+            StartupDiagnostics.Write("Dashboard startup smoke failed.", exception);
+        }
+        finally
+        {
+            App.CompleteStartupPerformanceRestore();
+            Close();
         }
     }
 

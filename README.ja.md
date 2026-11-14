@@ -10,7 +10,7 @@
 
 シンプルな画面、実機で検証したハードウェアプロトコル、追跡可能な解析記録。
 
-![Version](https://img.shields.io/badge/release-0.13.1-3b82f6?style=flat-square)
+![Version](https://img.shields.io/badge/release-0.13.3-3b82f6?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Windows_11_x64-64748b?style=flat-square)
 ![Stack](https://img.shields.io/badge/C%23-.NET_10_%2B_WinUI_3-14b8a6?style=flat-square)
 
@@ -87,8 +87,8 @@ BIOS や EC ファームウェアを置き換えるものではありません�
 
 ### インストール
 
-`GProControl-0.13.1-Setup-x64.exe` は
-[v0.13.1 リリース](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.13.1)
+`GProControl-0.13.3-Setup-x64.exe` は
+[v0.13.3 リリース](https://github.com/Memories-white/XiaomiGProControl/releases/tag/v0.13.3)
 からダウンロードできます。英語・中国語の Inno Setup ウィザードに .NET と Windows App SDK
 ランタイムを同梱しています。インストーラーは Release の添付ファイルとして配布し、Git のソース履歴には含めません。
 

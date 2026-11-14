@@ -102,9 +102,8 @@ public sealed partial class LightingPage : Page
             var rgb=Convert.FromHexString(App.AmbientLighting.SelectedColor);
             EffectColor.Color=Windows.UI.Color.FromArgb(255,(byte)(rgb[0]*2),(byte)(rgb[1]*2),(byte)(rgb[2]*2));
         }
-        PowerValueText.Text = state.IsEnabled ? "已开启" : "已关闭";
-        PowerButton.Content = state.IsEnabled ? "关闭" : "开启";
-        LightingPreviewText.Text = state.IsEnabled ? (EffectSelector.SelectedItem as LightingEffectChoice)?.Name ?? "当前灯效" : "键盘灯已关闭";
+        bool lightingActive = state.IsEnabled || App.AmbientLighting.ActiveEffect is not null;
+        LightingPreviewText.Text = lightingActive ? (EffectSelector.SelectedItem as LightingEffectChoice)?.Name ?? "当前灯效" : "键盘灯已关闭";
         LightingSourceText.Text = $"设备状态 · {state.ObservedAt:HH:mm:ss}";
         _updating = false;
     }
@@ -261,6 +260,9 @@ public sealed partial class LightingPage : Page
             _ => "不适用于当前效果的参数已停用。应用后会保存，并记住下次启动要恢复的配置。"
         };
         ApplyButton.IsEnabled = writable; PowerButton.IsEnabled = writable;
+        bool lightingActive = _state?.IsEnabled == true || App.AmbientLighting.ActiveEffect is not null;
+        PowerValueText.Text = lightingActive ? "已开启" : "已关闭";
+        PowerButton.Content = lightingActive ? "关闭" : "开启";
         StopAmbientButton.Visibility = App.AmbientLighting.ActiveEffect is null ? Visibility.Collapsed : Visibility.Visible;
         StopAmbientButton.IsEnabled = !_busy; RefreshButton.IsEnabled = !_busy;
     }
@@ -339,10 +341,16 @@ public sealed partial class LightingPage : Page
         try {
             var wasAmbient = App.AmbientLighting.ActiveEffect is not null;
             await App.AmbientLighting.StopAsync();
-            var profile = wasAmbient ? App.Settings.Current.LastLightingProfile
-                : _state is not null ? LightingProfile.FromState(_state) : null;
+            var state = _state;
+            if (wasAmbient)
+            {
+                var frame = await _client.ReadCommandAsync(1, TimeSpan.FromSeconds(2));
+                if (!Protocol.KeyboardLightingCodec.TryParseCmd1Reply(frame, DateTime.Now, out state))
+                    throw new InvalidDataException("无法确认动态灯效停止后的键盘状态。");
+            }
+            var profile = state is not null ? LightingProfile.FromState(state) : null;
             profile ??= App.Settings.Current.LastLightingProfile ?? SelectedProfile();
-            var enabled = _state?.IsEnabled != true;
+            var enabled = !wasAmbient && state?.IsEnabled != true;
             var applied = await _client.ApplyEffectAsync(profile, enabled, TimeSpan.FromSeconds(2));
             if (!enabled) App.Settings.Update(value => value.LastLightingProfile = profile);
             Remember(applied); ApplyState(applied);

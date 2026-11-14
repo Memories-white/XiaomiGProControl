@@ -7,6 +7,7 @@ public enum CloseAction { Ask, Background, Exit }
 public sealed class AppSettings
 {
     public string ThemeMode { get; set; } = "System";
+    public bool ShowNetworkSpeedInMegabytes { get; set; }
     public bool StartWithWindows { get; set; } = true;
     public bool StartInBackground { get; set; }
     public CloseAction CloseAction { get; set; } = CloseAction.Ask;

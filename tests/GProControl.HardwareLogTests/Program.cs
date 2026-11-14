@@ -146,6 +146,13 @@ try
             "legacy settings must not invent a saved lighting profile");
         Require(settings.Current.CloseAction == CloseAction.Ask && !settings.Current.StartInBackground,
             "legacy settings must default to asking on close and showing the window on startup");
+        Require(!settings.Current.ShowNetworkSpeedInMegabytes, "legacy settings must default to Kbps");
+        settings.Update(value => value.ShowNetworkSpeedInMegabytes = true);
+        Require(new AppSettingsStore(settingsPath).Current.ShowNetworkSpeedInMegabytes,
+            "MB/s selection must survive settings reload");
+        settings.Update(value => value.ShowNetworkSpeedInMegabytes = false);
+        Require(!new AppSettingsStore(settingsPath).Current.ShowNetworkSpeedInMegabytes,
+            "switching back to Kbps must survive settings reload");
         settings.Update(value =>
         {
             value.LastWaveLighting = new GProControl.Models.WaveLightingProfile(2, 0, 3, 3);

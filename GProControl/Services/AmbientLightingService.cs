@@ -38,10 +38,13 @@ internal sealed class AmbientLightingService(Func<bool> canWrite,Func<bool>? can
             Options = options;
             Brightness=brightness; SelectedColor=color;
             var cancellation = _cancellation.Token;
+            var firstFrame = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             _worker = Task.Run(async () =>
             {
                 AudioSpectrumReader? audio = null;
                 B21HidClient.RealtimeSession? realtime = null;
+                Exception? failure = null;
+                byte currentBrightness = original?[8] ?? brightness;
                 try
                 {
                     if (effect == 21) audio = new AudioSpectrumReader(options.AudioSource == 1);
@@ -64,6 +67,7 @@ internal sealed class AmbientLightingService(Func<bool> canWrite,Func<bool>? can
                                 }
                             }
                             await realtime.WriteAsync(pixels,cancellation); MatrixPreview=pixels;
+                            firstFrame.TrySetResult();
                             await Task.Delay(40,cancellation);
                             continue;
                         }
@@ -76,35 +80,49 @@ internal sealed class AmbientLightingService(Func<bool> canWrite,Func<bool>? can
                                 : AudioColor(bands.Max(),color);
                         }
                         // Runtime animation is never committed to keyboard flash.
-                        await client.ApplyEffectAsync(new LightingProfile(11, 0xFF, 0, brightness, 0, 0, rgb),
-                            true, TimeSpan.FromSeconds(2), cancellation, persist:false);
+                        // The firmware can reject all-zero RGB as a solid effect.
+                        // Use its temporary keyboard-off state for a black frame.
+                        bool lit = rgb != "000000";
+                        var profile = new LightingProfile(11, 0xFF, 0,
+                            lit ? Brightness : currentBrightness, 0, 0, rgb);
+                        var applied = await client.ApplyEffectAsync(profile, lit,
+                            TimeSpan.FromSeconds(2), cancellation, persist: false);
+                        currentBrightness = applied.BrightnessCode;
+                        if (lit) Brightness = currentBrightness;
+                        firstFrame.TrySetResult();
                         await Task.Delay(125, cancellation);
                     }
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
                 catch (Exception exception)
                 {
+                    failure = exception;
                     LastError = exception.Message;
                     StartupDiagnostics.Write($"Dynamic lighting stopped with an error: effect={effect}, perKey={options.PerKeyOutput}.", exception);
                 }
                 finally
                 {
-                    audio?.Dispose();
+                    try { audio?.Dispose(); }
+                    catch (Exception exception) { StartupDiagnostics.Write("Audio capture cleanup failed.", exception); }
                     try {
                         if(realtime is not null) await realtime.DisposeAsync();
                         else if(original is not null) await client.RestoreCapturedAsync(original, TimeSpan.FromSeconds(2));
                     }
                     catch (Exception exception)
                     {
+                        failure = failure is null ? exception : new AggregateException(failure, exception);
                         LastError = "灯效恢复未确认：" + exception.Message;
                         StartupDiagnostics.Write("Dynamic lighting restore failed.", exception);
                     }
                     ActiveEffect = null;
                     SpectrumBands = new float[17];
                     MatrixPreview=[];
+                    if (!firstFrame.Task.IsCompleted)
+                        firstFrame.TrySetException(new InvalidOperationException(LastError ?? "动态灯效在输出首帧前停止。", failure));
                     Changed?.Invoke();
                 }
             });
+            await firstFrame.Task;
             Changed?.Invoke();
         }
         finally { _gate.Release(); }
