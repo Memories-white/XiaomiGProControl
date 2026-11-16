@@ -9,12 +9,17 @@ namespace GProControl.Views;
 
 public sealed partial class DashboardPage : Page
 {
+    internal const double RogStackedBelow = 680;
+    internal const double LegionStackedBelow = 770;
+
     private readonly ISystemMonitorService _monitor = new WindowsSystemMonitorService();
     private readonly OriginalControlCenterProbe _bridgeProbe = new();
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly DispatcherTimer _sensorTimer = new() { Interval = TimeSpan.FromSeconds(5) };
     private bool _bridgeCaptured;
     private bool _sensorRefreshRunning;
+    private int _zoneModeIndex = -1;
+    private AppAppearance _appearance;
 
     public DashboardPage()
     {
@@ -27,6 +32,11 @@ public sealed partial class DashboardPage : Page
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
+        if (App.MainWindow is { } window)
+        {
+            window.AppearanceChanged += OnAppearanceChanged;
+            ApplyAppearance(window.ActiveAppearance);
+        }
         Refresh();
         _timer.Start();
         await App.StartupPerformanceRestore;
@@ -41,6 +51,8 @@ public sealed partial class DashboardPage : Page
             if (result.Verified && result.ReadbackValue is int ecValue)
             {
                 var index = PerformanceModeCatalog.IndexOfEc(ecValue);
+                _zoneModeIndex = index;
+                UpdateZoneMode();
                 DashboardModeText.Text = index >= 0
                     ? $"{PerformanceModeCatalog.All[index].Name} · EC {ecValue}"
                     : $"未知模式 · EC {ecValue}";
@@ -61,8 +73,111 @@ public sealed partial class DashboardPage : Page
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        if (App.MainWindow is { } window)
+            window.AppearanceChanged -= OnAppearanceChanged;
         _timer.Stop();
         _sensorTimer.Stop();
+    }
+
+    private void OnAppearanceChanged(object? sender, EventArgs args)
+    {
+        if (sender is MainWindow window)
+            ApplyAppearance(window.ActiveAppearance);
+    }
+
+    private void ApplyAppearance(AppAppearance appearance)
+    {
+        _appearance = appearance;
+        if (appearance == AppAppearance.Rog)
+            _ = FindName(nameof(RogDashboard));
+        else if (appearance == AppAppearance.Legion)
+        {
+            _ = FindName(nameof(LegionDashboard));
+            UpdateZoneMode();
+        }
+
+        if (RogDashboard is { } rog)
+            rog.Visibility = appearance == AppAppearance.Rog ? Visibility.Visible : Visibility.Collapsed;
+        if (LegionDashboard is { } legion)
+            legion.Visibility = appearance == AppAppearance.Legion ? Visibility.Visible : Visibility.Collapsed;
+        ClassicDashboard.Visibility = appearance == AppAppearance.Windows ? Visibility.Visible : Visibility.Collapsed;
+        LegionOverviewBackdrop.Visibility = appearance == AppAppearance.Legion ? Visibility.Visible : Visibility.Collapsed;
+        if (appearance == AppAppearance.Legion)
+            DashboardScroller.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+        else
+            DashboardScroller.ClearValue(ScrollViewer.VerticalScrollBarVisibilityProperty);
+        UpdateDashboardViewport(DashboardScroller.ActualWidth, DashboardScroller.ActualHeight);
+    }
+
+    private void DashboardScroller_SizeChanged(object sender, SizeChangedEventArgs e) =>
+        UpdateDashboardViewport(e.NewSize.Width, e.NewSize.Height);
+
+    private void UpdateDashboardViewport(double width, double height)
+    {
+        bool themed = _appearance != AppAppearance.Windows;
+        // Leave room for the viewport and Legion content to round independently at fractional DPI.
+        DashboardLayoutRoot.MinHeight = _appearance switch
+        {
+            AppAppearance.Legion => Math.Max(0, height - 1),
+            AppAppearance.Rog => height,
+            _ => 0
+        };
+        if (!themed || width <= 0) return;
+
+        // Let tall, wide windows use slightly larger instruments and section spacing.
+        // The dashboard can still measure taller than the viewport and scroll normally.
+        double extra = width >= 800 ? Math.Clamp((height - 620) * 0.16, 0, 34) : 0;
+        if (_appearance == AppAppearance.Rog && RogDashboard is { } rog)
+        {
+            rog.Width = Math.Min(width, rog.MaxWidth);
+            rog.RowSpacing = 22 + extra * 0.4;
+            RogDeviceArt.MaxHeight = 176 + extra;
+        }
+        else if (LegionDashboard is { } legion)
+        {
+            legion.Width = Math.Min(width, legion.MaxWidth);
+            legion.RowSpacing = 15 + extra * 0.3;
+            ZoneCpuGauge.MaxHeight = ZoneGpuGauge.MaxHeight = 168 + extra;
+        }
+    }
+
+    private void UpdateZoneMode()
+    {
+        if (ZoneModeStrip is not { } strip) return;
+
+        ZoneModeCaption.Text = _zoneModeIndex >= 0
+            ? PerformanceModeCatalog.All[_zoneModeIndex].Name
+            : "未确认";
+        foreach (var label in strip.Children.OfType<TextBlock>())
+        {
+            bool selected = Grid.GetColumn(label) == _zoneModeIndex;
+            label.Opacity = selected ? 1 : 0.57;
+            label.FontWeight = selected ? Microsoft.UI.Text.FontWeights.Bold : Microsoft.UI.Text.FontWeights.Normal;
+        }
+    }
+
+    private void LegionDashboard_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        bool stacked = e.NewSize.Width < LegionStackedBelow;
+        Grid.SetColumnSpan(LegionMonitor, stacked ? 2 : 1);
+        Grid.SetColumnSpan(LegionTools, stacked ? 2 : 1);
+        Grid.SetColumn(LegionQuickSettings, stacked ? 0 : 1);
+        Grid.SetColumnSpan(LegionQuickSettings, stacked ? 2 : 1);
+        Grid.SetRow(LegionQuickSettings, stacked ? 2 : 1);
+        Grid.SetRowSpan(LegionQuickSettings, stacked ? 1 : 2);
+        Grid.SetRow(LegionTools, stacked ? 3 : 2);
+    }
+
+    private void RogDashboard_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var stacked = e.NewSize.Width < RogStackedBelow;
+        Grid.SetColumnSpan(RogDeviceSummary, stacked ? 2 : 1);
+        Grid.SetColumnSpan(RogDeviceLinks, stacked ? 2 : 1);
+        Grid.SetColumn(RogMonitor, stacked ? 0 : 1);
+        Grid.SetColumnSpan(RogMonitor, stacked ? 2 : 1);
+        Grid.SetRow(RogMonitor, stacked ? 2 : 1);
+        Grid.SetRowSpan(RogMonitor, stacked ? 1 : 2);
+        Grid.SetRow(RogDeviceLinks, stacked ? 3 : 2);
     }
 
     private async void RefreshThermalFan_Click(object sender, RoutedEventArgs e) =>
@@ -164,6 +279,8 @@ public sealed partial class DashboardPage : Page
             : "—";
     }
 
+    private string ZonePercent(double percent) => $"{percent:0}%";
+
     private void CaptureBridgeStatus()
     {
         var status = _bridgeProbe.Capture();
@@ -196,4 +313,7 @@ public sealed partial class DashboardPage : Page
         App.MainWindow?.NavigateTo("performance");
     }
     private void OpenDetails_Click(object sender, RoutedEventArgs e) => App.MainWindow?.NavigateTo("details", asSubpage: true);
+    private void OpenDevice_Click(object sender, RoutedEventArgs e) => App.MainWindow?.NavigateTo("device");
+    private void OpenLighting_Click(object sender, RoutedEventArgs e) => App.MainWindow?.NavigateTo("lighting");
+    private void OpenSupport_Click(object sender, RoutedEventArgs e) => App.MainWindow?.NavigateTo("support");
 }

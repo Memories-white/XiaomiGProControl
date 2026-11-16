@@ -25,6 +25,7 @@ public sealed partial class GraphicModeControl : UserControl
     {
         _loaded = true;
         App.HardwareControl.StateChanged += OnHardwareStateChanged;
+        UpdateRestartNotice();
         await RefreshAsync();
     }
 
@@ -59,10 +60,7 @@ public sealed partial class GraphicModeControl : UserControl
             }
             var result = await App.HardwareControl.GetGraphicModeAsync();
             if (!_loaded) return;
-            _mode = result.Verified ? result.ReadbackValue : null;
-            ModeText.Text = _mode is int mode ? $"固件设置：{ModeName(mode)}" : "当前模式未确认";
-            StatusText.Text = result.Message;
-            RestartNotice.IsOpen = App.GraphicModeRestartPending;
+            ApplyModeReadback(result);
         }
         catch (Exception exception)
         {
@@ -103,13 +101,15 @@ public sealed partial class GraphicModeControl : UserControl
             if (await dialog.ShowAsync() != ContentDialogResult.Primary || !_loaded) return;
             StatusText.Text = "正在写入并读取固件确认…";
             var result = await App.HardwareControl.SetGraphicModeAsync(mode);
-            if (result.Verified && result.Submitted)
-                App.GraphicModeRestartPending = true;
+            if (result.Submitted)
+                App.PendingGraphicModeChange = (mode, result.Verified);
             if (!_loaded) return;
             _mode = result.Verified ? result.ReadbackValue : null;
             ModeText.Text = _mode is int actual ? $"固件设置：{ModeName(actual)}" : "切换结果未确认，请刷新";
             StatusText.Text = result.Message;
-            RestartNotice.IsOpen = App.GraphicModeRestartPending;
+            UpdateRestartNotice();
+            if (result.Submitted)
+                await RefreshAfterSwitchAsync(mode);
         }
         catch (Exception exception)
         {
@@ -121,6 +121,57 @@ public sealed partial class GraphicModeControl : UserControl
             _busy = false;
             if (_loaded) UpdateButtons();
         }
+    }
+
+    private async Task RefreshAfterSwitchAsync(int targetMode)
+    {
+        StatusText.Text = "正在自动刷新固件设置…";
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(500));
+            if (!_loaded) return;
+
+            var result = await App.HardwareControl.GetGraphicModeAsync();
+            if (!_loaded) return;
+            if (result.Verified && result.ReadbackValue == targetMode)
+            {
+                ApplyModeReadback(result);
+                return;
+            }
+
+            if (attempt == 2 && result.Verified)
+                ApplyModeReadback(result);
+        }
+
+        StatusText.Text = App.PendingGraphicModeChange is { Confirmed: true }
+            ? "固件已确认目标模式，重启 Windows 后生效。"
+            : "自动刷新后仍未确认目标模式，请稍后点击「刷新」。";
+    }
+
+    private void ApplyModeReadback(HardwareActionResult result)
+    {
+        _mode = result.Verified ? result.ReadbackValue : null;
+        ModeText.Text = _mode is int mode ? $"固件设置：{ModeName(mode)}" : "当前模式未确认";
+        StatusText.Text = result.Message;
+        if (App.PendingGraphicModeChange is { } pending && _mode is int savedMode)
+            App.PendingGraphicModeChange = (pending.TargetMode, savedMode == pending.TargetMode);
+        UpdateRestartNotice();
+    }
+
+    private void UpdateRestartNotice()
+    {
+        if (App.PendingGraphicModeChange is not { } pending)
+        {
+            RestartNotice.IsOpen = false;
+            return;
+        }
+
+        var target = ModeName(pending.TargetMode);
+        RestartNotice.Title = pending.Confirmed ? "需要重启生效" : "等待固件确认";
+        RestartNotice.Message = pending.Confirmed
+            ? $"已保存为{target}。请保存工作，然后重启 Windows 以应用此模式。"
+            : $"已提交切换到{target}。固件确认后即可重启 Windows 生效。";
+        RestartNotice.IsOpen = true;
     }
 
     private void UpdateButtons()

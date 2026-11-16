@@ -9,7 +9,8 @@ public sealed partial class DetailsPage : Page
 {
     private HardwareDetails? _details;
     private bool _loaded;
-    private int _columns;
+    private IReadOnlyList<HardwareDetailSection> _primarySections = [];
+    private IReadOnlyList<HardwareDetailSection> _virtualSections = [];
     public DetailsPage()
     {
         InitializeComponent();
@@ -27,40 +28,70 @@ public sealed partial class DetailsPage : Page
             var details=await new HardwareDetailsService().CaptureAsync(force);
             if(!_loaded) return;
             _details = details;
-            ArrangeSections(SectionGrid.ActualWidth >= 740 ? 2 : 1);
+            int gpuNumber = 0;
+            _primarySections = details.Sections
+                .Where(section => section.Kind != HardwareDetailSectionKind.VirtualDisplayAdapter)
+                .Select(section => section.Kind == HardwareDetailSectionKind.GraphicsAdapter
+                    ? section with { Title = ++gpuNumber == 1 ? "显卡" : $"显卡 {gpuNumber}" }
+                    : section)
+                .ToArray();
+            _virtualSections = details.Sections
+                .Where(section => section.Kind == HardwareDetailSectionKind.VirtualDisplayAdapter)
+                .Select((section, index) => section with { Title = $"虚拟适配器 {index + 1}" })
+                .ToArray();
+            ArrangeSections(SectionGrid, _primarySections, SectionGrid.ActualWidth);
+            VirtualAdapters.Visibility = _virtualSections.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            VirtualAdapterHeader.Text = $"虚拟显示适配器（{_virtualSections.Count}）";
+            ArrangeSections(VirtualAdapterGrid, _virtualSections, VirtualAdapterGrid.ActualWidth);
             RevealSerial_Toggled(this,new RoutedEventArgs());
             CopyButton.IsEnabled = true;
-            SummaryText.Text = $"{details.Sections.Count} 个参数分组 · {details.ObservedAt:HH:mm:ss} 更新 · 复制报告不含序列号";
+            SummaryText.Text = $"{details.Sections.Count} 个参数分组  ·  更新于 {details.ObservedAt:HH:mm:ss}";
             StatusBar.IsOpen = false;
         }
         catch(Exception exception) {StatusBar.Title="读取失败"; StatusBar.Message=exception.Message; StatusBar.Severity=InfoBarSeverity.Error;}
         finally {RefreshButton.IsEnabled=true;}
     }
-    private void SectionGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+    private void Header_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        int columns = e.NewSize.Width >= 740 ? 2 : 1;
-        if (_details is not null && columns != _columns) ArrangeSections(columns);
+        bool stackActions = e.NewSize.Width < 460;
+        Grid.SetColumnSpan(HeaderText, stackActions ? 2 : 1);
+        Grid.SetRow(HeaderActions, stackActions ? 1 : 0);
+        Grid.SetColumn(HeaderActions, stackActions ? 0 : 1);
+        Grid.SetColumnSpan(HeaderActions, stackActions ? 2 : 1);
     }
 
-    private void ArrangeSections(int columns)
+    private void SectionGrid_SizeChanged(object sender, SizeChangedEventArgs e) =>
+        UpdateSectionColumns(SectionGrid, _primarySections, e.NewSize.Width);
+
+    private void VirtualAdapterGrid_SizeChanged(object sender, SizeChangedEventArgs e) =>
+        UpdateSectionColumns(VirtualAdapterGrid, _virtualSections, e.NewSize.Width);
+
+    private static int GetColumnCount(double width) => width >= 1120 ? 3 : width >= 660 ? 2 : 1;
+
+    private void UpdateSectionColumns(Grid grid, IReadOnlyList<HardwareDetailSection> sections, double width)
     {
-        if (_details is null) return;
-        _columns = columns;
-        SectionGrid.Children.Clear();
-        SectionGrid.RowDefinitions.Clear();
-        SectionGrid.ColumnDefinitions.Clear();
+        if (width > 0 && sections.Count > 0 && grid.ColumnDefinitions.Count != GetColumnCount(width))
+            ArrangeSections(grid, sections, width);
+    }
+
+    private void ArrangeSections(Grid grid, IReadOnlyList<HardwareDetailSection> sections, double width)
+    {
+        int columns = GetColumnCount(width);
+        grid.Children.Clear();
+        grid.RowDefinitions.Clear();
+        grid.ColumnDefinitions.Clear();
         for (int column = 0; column < columns; column++)
-            SectionGrid.ColumnDefinitions.Add(new ColumnDefinition());
+            grid.ColumnDefinitions.Add(new ColumnDefinition());
 
         var template = (DataTemplate)Resources["SectionTemplate"];
-        for (int index = 0; index < _details.Sections.Count; index++)
+        for (int index = 0; index < sections.Count; index++)
         {
             if (index % columns == 0)
-                SectionGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            var card = new ContentPresenter { Content = _details.Sections[index], ContentTemplate = template };
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var card = new ContentPresenter { Content = sections[index], ContentTemplate = template };
             Grid.SetRow(card, index / columns);
             Grid.SetColumn(card, index % columns);
-            SectionGrid.Children.Add(card);
+            grid.Children.Add(card);
         }
     }
     private void RevealSerial_Toggled(object sender,RoutedEventArgs e)

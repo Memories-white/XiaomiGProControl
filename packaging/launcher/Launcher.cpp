@@ -41,35 +41,45 @@ static fs::path Relative(const std::string& text) {
     return path;
 }
 
-static std::string Sha256(const fs::path& path) {
-    std::ifstream input(path, std::ios::binary);
-    if (!input) throw std::runtime_error("Cannot open a runtime file for integrity validation.");
-    BCRYPT_ALG_HANDLE algorithm{};
-    BCRYPT_HASH_HANDLE hash{};
-    if (BCryptOpenAlgorithmProvider(&algorithm, BCRYPT_SHA256_ALGORITHM, nullptr, 0) < 0)
-        throw std::runtime_error("SHA-256 is unavailable.");
-    ULONG length{}, returned{};
-    BCryptGetProperty(algorithm, BCRYPT_OBJECT_LENGTH, (PUCHAR)&length, sizeof(length), &returned, 0);
-    std::vector<UCHAR> object(length);
-    if (BCryptCreateHash(algorithm, &hash, object.data(), length, nullptr, 0, 0) < 0) {
-        BCryptCloseAlgorithmProvider(algorithm, 0);
-        throw std::runtime_error("Cannot create SHA-256 hash.");
+class RuntimeHasher {
+public:
+    RuntimeHasher() {
+        if (BCryptCreateHash(BCRYPT_SHA256_ALG_HANDLE, &hash_, nullptr, 0, nullptr, 0, BCRYPT_HASH_REUSABLE_FLAG) < 0)
+            throw std::runtime_error("Cannot create a reusable SHA-256 hash.");
     }
-    std::array<char, 65536> buffer{};
-    while (input) {
-        input.read(buffer.data(), buffer.size());
-        if (input.gcount()) BCryptHashData(hash, (PUCHAR)buffer.data(), (ULONG)input.gcount(), 0);
+
+    RuntimeHasher(const RuntimeHasher&) = delete;
+    RuntimeHasher& operator=(const RuntimeHasher&) = delete;
+    ~RuntimeHasher() { BCryptDestroyHash(hash_); }
+
+    std::string Sha256(const fs::path& path) {
+        Handle input{CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
+            FILE_FLAG_SEQUENTIAL_SCAN, nullptr)};
+        if (input.value == INVALID_HANDLE_VALUE)
+            throw std::runtime_error("Cannot open a runtime file for integrity validation.");
+
+        DWORD read{};
+        do {
+            if (!ReadFile(input.value, buffer_.data(), (DWORD)buffer_.size(), &read, nullptr))
+                throw std::runtime_error("Cannot read a runtime file for integrity validation.");
+            if (read && BCryptHashData(hash_, buffer_.data(), read, 0) < 0)
+                throw std::runtime_error("Cannot hash a runtime file.");
+        } while (read);
+
+        std::array<UCHAR, 32> digest{};
+        if (BCryptFinishHash(hash_, digest.data(), (ULONG)digest.size(), 0) < 0)
+            throw std::runtime_error("Cannot finish SHA-256 hash.");
+        constexpr char alphabet[] = "0123456789abcdef";
+        std::string result;
+        result.reserve(digest.size() * 2);
+        for (auto byte : digest) { result += alphabet[byte >> 4]; result += alphabet[byte & 15]; }
+        return result;
     }
-    std::array<UCHAR, 32> digest{};
-    auto status = BCryptFinishHash(hash, digest.data(), (ULONG)digest.size(), 0);
-    BCryptDestroyHash(hash);
-    BCryptCloseAlgorithmProvider(algorithm, 0);
-    if (status < 0) throw std::runtime_error("Cannot finish SHA-256 hash.");
-    constexpr char alphabet[] = "0123456789abcdef";
-    std::string result;
-    for (auto byte : digest) { result += alphabet[byte >> 4]; result += alphabet[byte & 15]; }
-    return result;
-}
+
+private:
+    BCRYPT_HASH_HANDLE hash_{};
+    std::array<UCHAR, 65536> buffer_;
+};
 
 // Restrict executable caches to administrators/System. Regular users can read them.
 static void SecureDirectory(const fs::path& path) {
@@ -90,7 +100,8 @@ static void SecureDirectory(const fs::path& path) {
 
 static fs::path Prepare(const fs::path& root) {
     auto manifest = root / L"Runtime" / L"layout.tsv";
-    auto identity = Sha256(manifest);
+    RuntimeHasher hasher;
+    auto identity = hasher.Sha256(manifest);
     PWSTR common{};
     if (FAILED(SHGetKnownFolderPath(FOLDERID_ProgramData, 0, nullptr, &common)))
         throw std::runtime_error("Cannot locate ProgramData.");
@@ -122,13 +133,13 @@ static fs::path Prepare(const fs::path& root) {
                 throw std::runtime_error("Invalid runtime manifest entry.");
             auto source = root / Relative(sourceText);
             auto destination = cache / Relative(destinationText);
-            if (fs::exists(destination) && Sha256(destination) == expectedHash) { ++count; continue; }
-            if (Sha256(source) != expectedHash) throw std::runtime_error("An installed runtime file is corrupted; reinstall G Pro Control.");
+            if (fs::exists(destination) && hasher.Sha256(destination) == expectedHash) { ++count; continue; }
+            if (hasher.Sha256(source) != expectedHash) throw std::runtime_error("An installed runtime file is corrupted; reinstall G Pro Control.");
             fs::create_directories(destination.parent_path());
             if (fs::exists(destination)) fs::remove(destination);
             // Copy, rather than hard-link: an upgrade can safely replace installed files while an old cache runs.
             fs::copy_file(source, destination);
-            if (Sha256(destination) != expectedHash) throw std::runtime_error("Runtime cache integrity validation failed.");
+            if (hasher.Sha256(destination) != expectedHash) throw std::runtime_error("Runtime cache integrity validation failed.");
             ++count;
         }
         if (!count || !fs::exists(cache / L"GProControl.exe"))

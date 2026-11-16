@@ -1,10 +1,10 @@
-<Page x:Class="GProControl.Views.SupportPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<Page x:Class="GProControl.Views.SupportPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:views="using:GProControl.Views" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ScrollViewer>
-        <StackPanel Padding="28,20,28,32" Spacing="18">
-            <TextBlock Text="我的服务" FontSize="28" FontWeight="SemiBold" />
-            <TextBlock Text="服务与反馈、用户中心及软件信息" Opacity="0.62" />
-            <InfoBar x:Name="StatusBar" IsOpen="True" Severity="Informational" Title="小米官方服务入口" Message="服务页面将在默认浏览器打开；保修和订单信息由小米官网提供。" />
-            <Border Style="{StaticResource DashboardCardStyle}">
+        <views:RogPageLayout x:Name="Workspace" Padding="28,20,28,32" Spacing="18">
+            <TextBlock views:RogPageLayout.Band="0" views:RogPageLayout.Lane="0" Text="我的服务" FontSize="28" FontWeight="SemiBold" />
+            <TextBlock views:RogPageLayout.Band="0" views:RogPageLayout.Lane="0" Text="服务与反馈、用户中心及软件信息" Opacity="0.62" />
+            <InfoBar views:RogPageLayout.Band="1" views:RogPageLayout.Lane="0" x:Name="StatusBar" IsOpen="True" Severity="Informational" Title="小米官方服务入口" Message="服务页面将在默认浏览器打开；保修和订单信息由小米官网提供。" />
+            <Border views:RogPageLayout.Band="2" views:RogPageLayout.Lane="1" Style="{StaticResource DashboardCardStyle}">
                 <StackPanel Spacing="12">
                     <TextBlock Text="服务与反馈" Style="{StaticResource SectionTitleStyle}" />
                     <ItemsControl x:Name="LinkList">
@@ -20,20 +20,20 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <Button x:Name="CopyDiagnosticsButton" Content="复制诊断摘要" Click="CopyDiagnostics_Click" />
+                    <Button x:Name="CopyDiagnosticsButton" Style="{StaticResource SectionButtonStyle}" Content="复制诊断摘要" Click="CopyDiagnostics_Click" />
                     <TextBlock Text="包含软件版本、原厂组件状态及设备参数；不包含序列号，不会自动发送。" FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
-                    <Button x:Name="ExportLogButton" Content="导出运行日志" Click="ExportLog_Click" />
+                    <Button x:Name="ExportLogButton" Style="{StaticResource SectionButtonStyle}" Content="导出运行日志" Click="ExportLog_Click" />
                     <TextBlock Text="将启动、控制操作和错误记录保存为文本文件，便于排查问题。" FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
-            <Border Style="{StaticResource DashboardCardStyle}">
+            <Border views:RogPageLayout.Band="2" views:RogPageLayout.Lane="2" Style="{StaticResource DashboardCardStyle}">
                 <StackPanel Spacing="10">
                     <TextBlock Text="用户中心" Style="{StaticResource SectionTitleStyle}" />
                     <TextBlock Text="通过小米账号官网管理账号。登录和售后订单操作在浏览器中完成。" TextWrapping="Wrap" Opacity="0.65" />
                     <Button Content="打开小米账号" Tag="https://account.xiaomi.com/" Click="OpenAccount_Click" />
                 </StackPanel>
             </Border>
-            <Border Style="{StaticResource DashboardCardStyle}">
+            <Border views:RogPageLayout.Band="2" views:RogPageLayout.Lane="2" Style="{StaticResource DashboardCardStyle}">
                 <StackPanel Spacing="10">
                     <TextBlock Text="关于" Style="{StaticResource SectionTitleStyle}" />
                     <TextBlock x:Name="VersionText" FontSize="20" FontWeight="SemiBold" />
@@ -42,6 +42,6 @@
                     <HyperlinkButton Content="项目源码与逆向文档" NavigateUri="https://github.com/Memories-white/XiaomiGProControl" Padding="0,4" />
                 </StackPanel>
             </Border>
-        </StackPanel>
+        </views:RogPageLayout>
     </ScrollViewer>
 </Page>

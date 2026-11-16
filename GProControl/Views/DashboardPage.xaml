@@ -1,9 +1,19 @@
 <Page
     x:Class="GProControl.Views.DashboardPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <ScrollViewer>
-        <Grid Padding="28,20,28,32" RowSpacing="18">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:views="using:GProControl.Views">
+    <ScrollViewer x:Name="DashboardScroller" SizeChanged="DashboardScroller_SizeChanged"
+                  HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled">
+        <Grid x:Name="DashboardLayoutRoot">
+        <Border x:Name="LegionOverviewBackdrop" Visibility="Collapsed" IsHitTestVisible="False">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#0B0C10" Offset="0" />
+                    <GradientStop Color="#141824" Offset="1" />
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+        <Grid x:Name="ClassicDashboard" Padding="28,20,28,32" RowSpacing="18">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -13,19 +23,19 @@
             </Grid.RowDefinitions>
 
             <Grid>
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <StackPanel Spacing="5">
-                    <TextBlock Text="设备概览" FontSize="28" FontWeight="SemiBold" />
-                    <TextBlock Text="小米 G Pro 2024 · 实时状态" Opacity="0.62" />
-                </StackPanel>
-                <Button x:Name="OpenDetailsButton" Grid.Column="1" VerticalAlignment="Center"
-                        Click="OpenDetails_Click" Padding="12,8">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon Glyph="&#xE946;" FontSize="16" />
-                        <TextBlock Text="详细参数" VerticalAlignment="Center" />
-                        <FontIcon Glyph="&#xE76C;" FontSize="10" Opacity="0.65" />
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="设备概览" FontSize="28" FontWeight="SemiBold" />
+                        <TextBlock Text="小米 G Pro 2024 · 实时状态" Opacity="0.62" />
                     </StackPanel>
-                </Button>
+                    <Button x:Name="OpenDetailsButton" Grid.Column="1" VerticalAlignment="Center"
+                            Click="OpenDetails_Click" Padding="12,8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE946;" FontSize="16" />
+                            <TextBlock Text="详细参数" VerticalAlignment="Center" />
+                            <FontIcon Glyph="&#xE76C;" FontSize="10" Opacity="0.65" />
+                        </StackPanel>
+                    </Button>
             </Grid>
 
             <Grid Grid.Row="1" ColumnSpacing="16">
@@ -139,6 +149,272 @@
                     </Border>
                 </Grid>
             </Border>
+        </Grid>
+        <Grid x:Name="RogDashboard" x:Load="False" Visibility="Collapsed" Padding="22,22,22,22"
+              HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="1440"
+              RowSpacing="22" ColumnSpacing="28" SizeChanged="RogDashboard_SizeChanged">
+            <Grid.Resources>
+                <Style x:Key="RogGroupTitle" TargetType="TextBlock">
+                    <Setter Property="FontSize" Value="22" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </Style>
+                <Style x:Key="RogReadout" TargetType="TextBlock">
+                    <Setter Property="FontSize" Value="13" />
+                    <Setter Property="Foreground" Value="#D1D1D4" />
+                    <Setter Property="TextWrapping" Value="Wrap" />
+                </Style>
+            </Grid.Resources>
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="4*" /><ColumnDefinition Width="6*" /></Grid.ColumnDefinitions>
+
+            <TextBlock Grid.ColumnSpan="2" Text="设备概览" FontSize="29" FontWeight="Bold" />
+
+            <StackPanel x:Name="RogDeviceSummary" Grid.Row="1" Spacing="12" VerticalAlignment="Center">
+                <Viewbox x:Name="RogDeviceArt" MaxWidth="262" MaxHeight="176" Margin="12,8" Stretch="Uniform">
+                    <Canvas Width="232" Height="166" AutomationProperties.AccessibilityView="Raw">
+                        <Path Stroke="#817E86" StrokeThickness="1.5" Fill="#17171B"
+                              Data="M 30,14 L 202,14 209,21 209,126 228,148 224,153 8,153 4,148 23,126 23,21 Z" />
+                        <Path Stroke="#706D75" StrokeThickness="1" Data="M 31,24 L 201,24 201,120 31,120 Z M 23,126 L 209,126 M 4,148 L 228,148 M 105,143 L 127,143 131,148 101,148 Z" />
+                        <Path Stroke="#453744" StrokeThickness="1" Data="M 45,110 L 110,34 157,34 90,110 Z M 104,110 L 171,34 191,34 124,110 Z" />
+                        <Path Stroke="#FF2C47" StrokeThickness="2" Data="M 135,59 L 102,59 90,71 90,82 102,92 130,92 141,81 141,75 115,75" />
+                        <Path Stroke="#65636B" StrokeThickness="1" Data="M 37,132 L 195,132 203,141 29,141 Z M 47,135 L 184,135 M 42,138 L 190,138" />
+                    </Canvas>
+                </Viewbox>
+                <TextBlock Text="XIAOMI G PRO 2024" FontSize="21" FontWeight="Bold" TextAlignment="Center" TextWrapping="Wrap" />
+                <TextBlock Text="{x:Bind GpuNameText.Text, Mode=OneWay}" Style="{StaticResource RogReadout}" TextAlignment="Center" />
+                <Button Content="详细参数" Click="OpenDetails_Click" HorizontalAlignment="Center"
+                        Padding="24,6" CornerRadius="2" BorderBrush="#69666C" />
+            </StackPanel>
+
+            <StackPanel x:Name="RogMonitor" Grid.Row="1" Grid.Column="1" Grid.RowSpan="2" Spacing="18">
+                <StackPanel Orientation="Horizontal" Spacing="9">
+                    <Path Fill="#FF2947" Width="25" Height="10" Stretch="Fill" VerticalAlignment="Center"
+                          Data="M0,0 L4,0 12,9 8,9 Z M7,0 L11,0 19,9 15,9 Z M14,0 L18,0 26,9 22,9 Z" />
+                    <TextBlock Text="系统监控" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </StackPanel>
+                <Grid ColumnSpacing="22">
+                    <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="使用率" Style="{StaticResource RogGroupTitle}" />
+                        <TextBlock Style="{StaticResource RogReadout}"><Run Text="CPU  " /><Run Text="{x:Bind CpuUsageText.Text, Mode=OneWay}" /></TextBlock>
+                        <ProgressBar Value="{x:Bind CpuUsageBar.Value, Mode=OneWay}" Foreground="#FF3454" Height="4" />
+                        <TextBlock Style="{StaticResource RogReadout}"><Run Text="GPU  " /><Run Text="{x:Bind GpuUsageText.Text, Mode=OneWay}" /></TextBlock>
+                        <ProgressBar Value="{x:Bind GpuUsageBar.Value, Mode=OneWay}" Foreground="#C651F6" Height="4" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="10">
+                        <TextBlock Text="温度与散热" Style="{StaticResource RogGroupTitle}" />
+                        <TextBlock Style="{StaticResource RogReadout}"><Run Text="CPU  " /><Run Text="{x:Bind CpuTemperatureText.Text, Mode=OneWay}" /><Run Text="  ·  " /><Run Text="{x:Bind CpuFanText.Text, Mode=OneWay}" /></TextBlock>
+                        <TextBlock Style="{StaticResource RogReadout}"><Run Text="GPU  " /><Run Text="{x:Bind GpuTemperatureText.Text, Mode=OneWay}" /><Run Text="  ·  " /><Run Text="{x:Bind GpuFanText.Text, Mode=OneWay}" /></TextBlock>
+                        <Button Content="{x:Bind RefreshThermalFanButton.Content, Mode=OneWay}" IsEnabled="{x:Bind RefreshThermalFanButton.IsEnabled, Mode=OneWay}"
+                                Click="RefreshThermalFan_Click" CornerRadius="2" />
+                    </StackPanel>
+                </Grid>
+                <Border Height="1" Background="#333136" />
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+                    <StackPanel Spacing="9">
+                        <TextBlock Text="内存与存储" Style="{StaticResource RogGroupTitle}" />
+                        <TextBlock Text="{x:Bind MemoryText.Text, Mode=OneWay}" Style="{StaticResource RogReadout}" />
+                        <ProgressBar Value="{x:Bind MemoryBar.Value, Mode=OneWay}" Foreground="#FF3454" Height="4" />
+                        <TextBlock Text="{x:Bind DiskText.Text, Mode=OneWay}" Style="{StaticResource RogReadout}" />
+                        <ProgressBar Value="{x:Bind DiskBar.Value, Mode=OneWay}" Foreground="#FF3454" Height="4" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="9">
+                        <TextBlock Text="GPU 状态" Style="{StaticResource RogGroupTitle}" />
+                        <TextBlock Style="{StaticResource RogReadout}"><Run Text="功耗  " /><Run Text="{x:Bind GpuPowerText.Text, Mode=OneWay}" /></TextBlock>
+                        <TextBlock Style="{StaticResource RogReadout}"><Run Text="显存  " /><Run Text="{x:Bind GpuMemoryText.Text, Mode=OneWay}" /></TextBlock>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Spacing="9">
+                        <TextBlock Text="网络" Style="{StaticResource RogGroupTitle}" />
+                        <TextBlock Style="{StaticResource RogReadout}"><Run Text="下载  " /><Run Text="{x:Bind DownloadText.Text, Mode=OneWay}" /></TextBlock>
+                        <TextBlock Style="{StaticResource RogReadout}"><Run Text="上传  " /><Run Text="{x:Bind UploadText.Text, Mode=OneWay}" /></TextBlock>
+                    </StackPanel>
+                </Grid>
+                <Border BorderBrush="#5F363E" BorderThickness="0,1,0,1" Padding="0,12">
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="性能模式" Foreground="#FF526B" FontWeight="SemiBold" />
+                            <TextBlock Text="{x:Bind DashboardModeText.Text, Mode=OneWay}" FontSize="19" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="查看模式" VerticalAlignment="Center" Click="OpenPerformance_Click"
+                                CornerRadius="2" BorderBrush="#9F3C50" />
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <Border x:Name="RogDeviceLinks" Grid.Row="2" BorderBrush="#514F53" BorderThickness="1" CornerRadius="3" Padding="14">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="设备与服务" FontWeight="SemiBold" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="设备控制" CornerRadius="2" Click="OpenDevice_Click" />
+                        <Button Content="键盘灯效" CornerRadius="2" Click="OpenLighting_Click" />
+                    </StackPanel>
+                    <TextBlock Text="{x:Bind BridgeStatusText.Text, Mode=OneWay}" Foreground="#FF637C" />
+                    <TextBlock Text="{x:Bind BridgeDetailText.Text, Mode=OneWay}" Style="{StaticResource RogReadout}" />
+                </StackPanel>
+            </Border>
+        </Grid>
+        <Grid x:Name="LegionDashboard" x:Load="False" Visibility="Collapsed" Padding="26,24,26,24"
+              HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="1500"
+              ColumnSpacing="18" RowSpacing="15" SizeChanged="LegionDashboard_SizeChanged">
+            <Grid.Resources>
+                <Style x:Key="ZonePanel" TargetType="Border">
+                    <Setter Property="Background" Value="#171B23" />
+                    <Setter Property="BorderBrush" Value="#2A303B" />
+                    <Setter Property="BorderThickness" Value="1" />
+                    <Setter Property="CornerRadius" Value="9" />
+                </Style>
+                <Style x:Key="ZoneLabel" TargetType="TextBlock">
+                    <Setter Property="Foreground" Value="#A8B4C2" />
+                    <Setter Property="FontSize" Value="12" />
+                    <Setter Property="TextWrapping" Value="Wrap" />
+                </Style>
+                <Style x:Key="ZoneTile" TargetType="Button">
+                    <Setter Property="Background" Value="#191E27" />
+                    <Setter Property="BorderBrush" Value="#2C3543" />
+                    <Setter Property="CornerRadius" Value="9" />
+                    <Setter Property="HorizontalAlignment" Value="Stretch" />
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="Padding" Value="13,13" />
+                </Style>
+            </Grid.Resources>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="4.1*" /><ColumnDefinition /></Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid Grid.ColumnSpan="2" ColumnSpacing="14" Padding="0,4,0,8">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                <TextBlock Text="Redmi G Pro 2024" FontSize="24" FontWeight="Bold" VerticalAlignment="Center" TextWrapping="Wrap" />
+                <Button Grid.Column="1" Content="硬件详情" Click="OpenDetails_Click" CornerRadius="15"
+                        Padding="14,4" Background="Transparent" BorderBrush="#495462" />
+            </Grid>
+
+            <Border x:Name="LegionMonitor" Grid.Row="1" Style="{StaticResource ZonePanel}">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#20252F" Offset="0" />
+                        <GradientStop Color="#11151D" Offset="0.62" />
+                        <GradientStop Color="#161C26" Offset="1" />
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Grid Padding="16,12,16,0" RowSpacing="10">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <Grid>
+                        <TextBlock Text="性能管控" Foreground="#B7C2D0" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <Button HorizontalAlignment="Right" Click="RefreshThermalFan_Click"
+                                Content="{x:Bind RefreshThermalFanButton.Content, Mode=OneWay}"
+                                IsEnabled="{x:Bind RefreshThermalFanButton.IsEnabled, Mode=OneWay}"
+                                Background="Transparent" Foreground="#AFC4DF" FontSize="11" />
+                    </Grid>
+                    <Grid Grid.Row="1" ColumnSpacing="6">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="1.35*" /><ColumnDefinition /><ColumnDefinition Width="1.35*" /></Grid.ColumnDefinitions>
+                        <StackPanel Spacing="5" VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind CpuTemperatureText.Text, Mode=OneWay}" HorizontalAlignment="Center" Foreground="#B0CCED" />
+                            <views:ZoneGauge x:Name="ZoneCpuGauge" Label="CPU" Reading="{x:Bind CpuUsageText.Text, Mode=OneWay}"
+                                             Value="{x:Bind CpuUsageBar.Value, Mode=OneWay}" MaxWidth="288" MaxHeight="168" />
+                            <TextBlock Text="{x:Bind CpuFanText.Text, Mode=OneWay}" Style="{StaticResource ZoneLabel}" TextAlignment="Center" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center">
+                            <Grid MaxWidth="150" Height="112">
+                                <Viewbox Stretch="Uniform">
+                                    <Canvas Width="148" Height="108">
+                                        <Path Data="M74,5 L135,40 113,102 35,102 13,40 Z" Stroke="#465C81" StrokeThickness="1" />
+                                        <Path Data="M74,12 L125,44 107,94 41,94 23,44 Z" Stroke="#3B71C8" StrokeThickness="1" Fill="#302063BC" />
+                                        <Path Data="M74,19 L114,46 99,86 49,86 34,46 Z" Stroke="#5799FF" StrokeThickness="1" Fill="#412971DC" />
+                                    </Canvas>
+                                </Viewbox>
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="4" Margin="8,12,8,0">
+                                    <TextBlock Text="当前模式" Foreground="#A5B6D0" FontSize="10" TextAlignment="Center" />
+                                    <TextBlock x:Name="ZoneModeCaption" Text="未确认" TextAlignment="Center" Foreground="#E4F0FF" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Grid>
+                            <views:ZoneGauge Label="DRAM" Reading="{x:Bind ZonePercent(MemoryBar.Value), Mode=OneWay}"
+                                             Value="{x:Bind MemoryBar.Value, Mode=OneWay}" MaxWidth="126" MaxHeight="84" />
+                            <TextBlock Text="{x:Bind MemoryText.Text, Mode=OneWay}" Style="{StaticResource ZoneLabel}" TextAlignment="Center" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="5" VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind GpuTemperatureText.Text, Mode=OneWay}" HorizontalAlignment="Center" Foreground="#B0CCED" />
+                            <views:ZoneGauge x:Name="ZoneGpuGauge" Label="GPU" Reading="{x:Bind GpuUsageText.Text, Mode=OneWay}"
+                                             Value="{x:Bind GpuUsageBar.Value, Mode=OneWay}" MaxWidth="288" MaxHeight="168" />
+                            <TextBlock Text="{x:Bind GpuFanText.Text, Mode=OneWay}" Style="{StaticResource ZoneLabel}" TextAlignment="Center" />
+                            <TextBlock Style="{StaticResource ZoneLabel}" TextAlignment="Center">
+                                <Run Text="{x:Bind GpuMemoryText.Text, Mode=OneWay}" /><Run Text="  ·  " /><Run Text="{x:Bind GpuPowerText.Text, Mode=OneWay}" />
+                            </TextBlock>
+                        </StackPanel>
+                    </Grid>
+                    <Border Grid.Row="2" Background="#15202D" BorderBrush="#2C3A4D" BorderThickness="0,1,0,0" Padding="3,7">
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <Grid x:Name="ZoneModeStrip" ColumnSpacing="4" VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+                                <TextBlock Text="静谧" TextAlignment="Center" Opacity="0.57" />
+                                <TextBlock Grid.Column="1" Text="均衡" TextAlignment="Center" Opacity="0.57" />
+                                <TextBlock Grid.Column="2" Text="极速" TextAlignment="Center" Opacity="0.57" />
+                                <TextBlock Grid.Column="3" Text="狂暴" TextAlignment="Center" Opacity="0.57" />
+                            </Grid>
+                            <Button Grid.Column="1" Content="调整模式" Click="OpenPerformance_Click" Background="Transparent" FontSize="12" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <Grid x:Name="LegionTools" Grid.Row="2" ColumnSpacing="12">
+                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+                <Button Style="{StaticResource ZoneTile}" Click="OpenDevice_Click">
+                    <StackPanel Spacing="8"><SymbolIcon Symbol="View" HorizontalAlignment="Left" Foreground="#9EAFCA" />
+                        <TextBlock Text="显卡输出" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <TextBlock Text="混合与独显模式" Style="{StaticResource ZoneLabel}" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="1" Style="{StaticResource ZoneTile}" Click="OpenDevice_Click">
+                    <StackPanel Spacing="8"><SymbolIcon Symbol="Setting" HorizontalAlignment="Left" Foreground="#9EAFCA" />
+                        <TextBlock Text="设备控制" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <TextBlock Text="按键与触控板" Style="{StaticResource ZoneLabel}" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="2" Style="{StaticResource ZoneTile}" Click="OpenLighting_Click">
+                    <StackPanel Spacing="8"><FontIcon Glyph="&#xE765;" HorizontalAlignment="Left" Foreground="#9EAFCA" />
+                        <TextBlock Text="键盘灯效" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <TextBlock Text="灯效模式与颜色" Style="{StaticResource ZoneLabel}" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="3" Style="{StaticResource ZoneTile}" Click="OpenPerformance_Click">
+                    <StackPanel Spacing="8"><FontIcon Glyph="&#xE701;" HorizontalAlignment="Left" Foreground="#9EAFCA" />
+                        <TextBlock Text="WLAN 加速" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <TextBlock Text="查看加速状态" Style="{StaticResource ZoneLabel}" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <StackPanel x:Name="LegionQuickSettings" Grid.Row="1" Grid.Column="1" Grid.RowSpan="2" Spacing="13">
+                <Border Style="{StaticResource ZonePanel}" Padding="13,12">
+                    <StackPanel Spacing="8">
+                        <FontIcon Glyph="&#xE7F4;" FontSize="25" Foreground="#5E9CF8" HorizontalAlignment="Left" />
+                        <TextBlock Text="系统磁盘" FontWeight="Bold" />
+                        <TextBlock Text="{x:Bind DiskText.Text, Mode=OneWay}" Style="{StaticResource ZoneLabel}" />
+                        <ProgressBar Value="{x:Bind DiskBar.Value, Mode=OneWay}" Foreground="#548DF6" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource ZonePanel}" Padding="13,12">
+                    <StackPanel Spacing="8">
+                        <FontIcon Glyph="&#xE839;" FontSize="24" Foreground="#5E9CF8" HorizontalAlignment="Left" />
+                        <TextBlock Text="网络状态" FontWeight="Bold" />
+                        <TextBlock Style="{StaticResource ZoneLabel}"><Run Text="下载  " /><Run Text="{x:Bind DownloadText.Text, Mode=OneWay}" /></TextBlock>
+                        <TextBlock Style="{StaticResource ZoneLabel}"><Run Text="上传  " /><Run Text="{x:Bind UploadText.Text, Mode=OneWay}" /></TextBlock>
+                    </StackPanel>
+                </Border>
+                <Button Style="{StaticResource ZoneTile}" Click="OpenSupport_Click">
+                    <StackPanel Spacing="8">
+                        <FontIcon Glyph="&#xE8F2;" FontSize="24" Foreground="#5E9CF8" HorizontalAlignment="Left" />
+                        <TextBlock Text="我的服务" FontWeight="Bold" />
+                        <TextBlock Text="{x:Bind BridgeStatusText.Text, Mode=OneWay}" Style="{StaticResource ZoneLabel}" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
         </Grid>
     </ScrollViewer>
 </Page>

@@ -13,12 +13,13 @@ public partial class App : Application
     internal static AmbientLightingService AmbientLighting { get; } = new(() => HardwareControl.State.CanWrite,() => Settings.Current.RealtimeLightingValidated);
     public static string StartupRestoreMessage { get; private set; } = "尚未执行启动恢复。";
     public static string LightingRestoreMessage { get; private set; } = "尚未恢复灯效。";
-    public static bool GraphicModeRestartPending { get; set; }
+    internal static (int TargetMode, bool Confirmed)? PendingGraphicModeChange { get; set; }
     public static bool IsPackageSmoke { get; } = Environment.GetCommandLineArgs().Contains("--package-smoke");
     private static readonly TaskCompletionSource StartupPerformanceReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     internal static Task StartupPerformanceRestore => StartupPerformanceReady.Task;
     internal static void CompleteStartupPerformanceRestore() => StartupPerformanceReady.TrySetResult();
     public static string StartupRegistrationMessage { get; private set; } = "登录 Windows 后以管理员权限自动启动。";
+    internal static Task StartupRegistrationWork { get; private set; } = Task.CompletedTask;
 
     public App()
     {
@@ -45,13 +46,16 @@ public partial class App : Application
         {
             MainWindow = new MainWindow();
             StartupDiagnostics.Write("Main window constructed.");
+            MainWindow.ApplyAppearance(adjustWindowSize: true);
             MainWindow.Activate();
             StartupDiagnostics.Write("Main window activated.");
-            MainWindow.ApplyTheme(Settings.Current.ThemeMode);
             if (!IsPackageSmoke)
             {
-                StartupRegistrationService.SetEnabled(Settings.Current.StartWithWindows, out var startupMessage);
-                StartupRegistrationMessage = startupMessage;
+                StartupRegistrationWork = Task.Run(() =>
+                {
+                    StartupRegistrationService.SetEnabled(Settings.Current.StartWithWindows, out var startupMessage);
+                    StartupRegistrationMessage = startupMessage;
+                });
                 _ = RestoreAllStartupStateAsync();
                 if (Environment.GetCommandLineArgs().Contains("--startup") && Settings.Current.StartInBackground)
                     MainWindow.MoveToBackground();

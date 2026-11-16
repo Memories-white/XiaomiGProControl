@@ -3,10 +3,16 @@ using GProControl.Protocol;
 using GProControl.Views;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.UI.Xaml.Hosting;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using Microsoft.UI.Xaml.Navigation;
+using Windows.UI;
+using Microsoft.UI.System;
 
 namespace GProControl;
 
@@ -17,6 +23,13 @@ public sealed partial class MainWindow : Window
     private bool _closeApproved;
     private bool _closePromptRunning;
     private bool _syncingNavigation;
+    private Storyboard? _sidebarTransition;
+    private readonly HashSet<FrameworkElement> _queuedNavigationIcons = new();
+    private ThemeSettings? _themeSettings;
+    internal AppAppearance ActiveAppearance { get; private set; }
+    internal bool IsRogAppearanceActive => ActiveAppearance == AppAppearance.Rog;
+    private bool IsGamingAppearanceActive => ActiveAppearance != AppAppearance.Windows;
+    internal event EventHandler? AppearanceChanged;
     private (CancellationTokenSource Cancellation,Task Completion)? _lightingTest;
     private readonly Dictionary<string, Type> _pages = new()
     {
@@ -38,11 +51,24 @@ public sealed partial class MainWindow : Window
         StartupDiagnostics.Write("Mica backdrop initialized.");
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
-        AppWindow.Resize(new Windows.Graphics.SizeInt32(1180, 760));
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "GProControl.ico"));
         Navigation.SelectedItem = Navigation.MenuItems[0];
         AppWindow.Closing += OnClosing;
-        Closed += (_, _) => _tray?.Dispose();
+        Closed += (_, _) =>
+        {
+            _themeSettings = null;
+            _tray?.Dispose();
+        };
+        try
+        {
+            var themeSettings = ThemeSettings.CreateForWindowId(AppWindow.Id);
+            _themeSettings = themeSettings;
+            themeSettings.Changed += OnWindowThemeChanged;
+        }
+        catch (Exception exception)
+        {
+            StartupDiagnostics.Write("Window theme monitoring unavailable.", exception);
+        }
         StartupDiagnostics.Write("MainWindow initialization completed.");
     }
 
@@ -176,6 +202,12 @@ public sealed partial class MainWindow : Window
 
     internal async Task VerifyBackgroundLifecycleAsync()
     {
+        if (Environment.GetCommandLineArgs().Contains("--rog-ui-smoke"))
+        {
+            await VerifyRogDashboardAsync();
+            return;
+        }
+
         if (Environment.GetCommandLineArgs().Contains("--dashboard-startup-smoke"))
         {
             await VerifyDashboardStartupAsync();
@@ -227,7 +259,7 @@ public sealed partial class MainWindow : Window
                     Microsoft.UI.Xaml.Automation.Peers.PatternInterface.Invoke)).Invoke();
                 await Task.Delay(300);
                 if (ContentFrame.Content is not DetailsPage || !ContentFrame.CanGoBack ||
-                    Navigation.IsBackButtonVisible != NavigationViewBackButtonVisible.Visible ||
+                    PageBackButton.Visibility != Visibility.Visible ||
                     (Navigation.SelectedItem as NavigationViewItem)?.Tag?.ToString() != "dashboard" ||
                     Navigation.MenuItems.OfType<NavigationViewItem>().Any(item => item.Tag?.ToString() == "details"))
                     throw new InvalidOperationException("Details must be a dashboard subpage.");
@@ -245,7 +277,7 @@ public sealed partial class MainWindow : Window
                 NavigateTo("support");
                 var support=(SupportPage)ContentFrame.Content;
                 var links=(ItemsControl)support.FindName("LinkList");
-                if(links.Items.Count!=6 || Navigation.IsBackButtonVisible!=NavigationViewBackButtonVisible.Collapsed)
+                if(links.Items.Count!=6 || PageBackButton.Visibility!=Visibility.Collapsed)
                     throw new InvalidOperationException("Support page links or navigation differ.");
                 NavigateTo("dashboard");
                 NavigateTo("details", asSubpage: true);
@@ -256,6 +288,171 @@ public sealed partial class MainWindow : Window
             }
             catch(Exception exception) {StartupDiagnostics.Write("Support/details UI smoke failed.",exception);}
             finally {Close();}
+        }
+    }
+
+    private async Task VerifyRogDashboardAsync()
+    {
+        try
+        {
+            App.Settings.Current.Appearance = AppAppearance.Rog;
+            ApplyAppearance(adjustWindowSize: true);
+            await Task.Delay(400);
+            if (GamingSidebar.Visibility != Visibility.Visible || Navigation.IsPaneVisible
+                || RogWorkspaceBackdrop.Visibility != Visibility.Visible || RogWorkspaceBackdrop.ActualWidth <= 0
+                || ContentFrame.Content is not DashboardPage page
+                || page.FindName("RogDashboard") is not Grid { ActualWidth: > 0, Visibility: Visibility.Visible }
+                || page.FindName("ClassicDashboard") is not Grid { Visibility: Visibility.Collapsed })
+                throw new InvalidOperationException("ROG dashboard and sidebar did not load.");
+            RequireCenteredDashboard(page, "RogDashboard");
+            RequireFittedDashboard(page, 1060, 684);
+
+            NavigateTo("details", asSubpage: true);
+            if (ContentFrame.Content is not DetailsPage || PageBackButton.Visibility != Visibility.Visible
+                || !ReferenceEquals(VisualTreeHelper.GetParent(PageBackButton), VisualTreeHelper.GetParent(ContentFrame)))
+                throw new InvalidOperationException("ROG details navigation did not provide a back button.");
+            await Task.Delay(200);
+            RequireRogWorkspace("details");
+            await RequireDetailsLayoutAsync((DetailsPage)ContentFrame.Content);
+            var backPeer = new Microsoft.UI.Xaml.Automation.Peers.ButtonAutomationPeer(PageBackButton);
+            ((Microsoft.UI.Xaml.Automation.Provider.IInvokeProvider)backPeer.GetPattern(
+                Microsoft.UI.Xaml.Automation.Peers.PatternInterface.Invoke)).Invoke();
+            await Task.Delay(100);
+            if (ContentFrame.Content is not DashboardPage || GamingNavigation.SelectedIndex != 0)
+                throw new InvalidOperationException("ROG navigation did not return to the dashboard.");
+
+            foreach (var tag in new[] { "performance", "lighting", "device", "support", "settings" })
+            {
+                var item = GamingNavigation.Items.OfType<ListViewItem>().Single(candidate => candidate.Tag?.ToString() == tag);
+                GamingNavigation.SelectedItem = item;
+                await Task.Delay(110);
+                if (AnimationsEnabled() && item.Content is StackPanel panel && panel.Children[0] is Grid icon
+                    && ElementCompositionPreview.GetElementVisual(icon).TryGetAnimationController("Scale") is null)
+                    throw new InvalidOperationException($"The sidebar icon for {tag} did not animate.");
+                RequireRogWorkspace(tag);
+            }
+
+            var settingsWorkspace = (RogPageLayout)((Page)ContentFrame.Content).FindName("Workspace");
+            var switchProbe = new ToggleSwitch { OnContent = "开启", OffContent = "关闭" };
+            RogToggleSwitch.SetAdapt(switchProbe, true);
+            settingsWorkspace.Children.Add(switchProbe);
+            await Task.Delay(120);
+            if (!ReferenceEquals(switchProbe.Template, Application.Current.Resources["RogToggleTemplate"]))
+                throw new InvalidOperationException("ROG switch template did not load.");
+            var switchPeer = new Microsoft.UI.Xaml.Automation.Peers.ToggleSwitchAutomationPeer(switchProbe);
+            ((Microsoft.UI.Xaml.Automation.Provider.IToggleProvider)switchPeer.GetPattern(
+                Microsoft.UI.Xaml.Automation.Peers.PatternInterface.Toggle)).Toggle();
+            await Task.Delay(100);
+            if (!switchProbe.IsOn)
+                throw new InvalidOperationException("ROG switch did not respond to the toggle action.");
+
+            App.Settings.Current.Appearance = AppAppearance.Windows;
+            ApplyAppearance();
+            if (settingsWorkspace.IsRogLayout || !settingsWorkspace.Children.OfType<Border>()
+                .Any(card => ReferenceEquals(card.Style, Application.Current.Resources["DashboardCardStyle"]))
+                || ReferenceEquals(switchProbe.Template, Application.Current.Resources["RogToggleTemplate"]) || !switchProbe.IsOn)
+                throw new InvalidOperationException("Settings did not return to its standard card layout.");
+            settingsWorkspace.Children.Remove(switchProbe);
+
+            var previousSidebarState = App.Settings.Current.GamingSidebarCollapsed;
+            App.Settings.Current.Appearance = AppAppearance.Legion;
+            App.Settings.Current.GamingSidebarCollapsed = true;
+            ApplyAppearance(adjustWindowSize: true);
+            if (!settingsWorkspace.Children.OfType<Border>()
+                .Any(card => ReferenceEquals(card.Style, Application.Current.Resources["LegionSectionStyle"])))
+                throw new InvalidOperationException("Legion settings styling did not load.");
+            NavigateTo("dashboard");
+            await Task.Delay(200);
+            if (ContentFrame.Content is not DashboardPage legionPage
+                || legionPage.FindName("LegionDashboard") is not Grid { ActualWidth: > 0, Visibility: Visibility.Visible }
+                || GamingSidebar.Width != 56 || GamingNavigation.SelectedIndex != 0
+                || RogWorkspaceBackdrop.Visibility != Visibility.Collapsed)
+                throw new InvalidOperationException("Legion dashboard or compact navigation did not load.");
+            RequireCenteredDashboard(legionPage, "LegionDashboard");
+            RequireFittedDashboard(legionPage, 1090, 624);
+            var normalWindowSize = AppWindow.Size;
+            AppWindow.Resize(new Windows.Graphics.SizeInt32(800, 460));
+            await Task.Delay(180);
+            RequireCenteredDashboard(legionPage, "LegionDashboard");
+            var compactScroller = (ScrollViewer)legionPage.FindName("DashboardScroller");
+            if (compactScroller.ScrollableHeight <= 0)
+                throw new InvalidOperationException("The dashboard could not scroll in a short window.");
+            AppWindow.Resize(normalWindowSize);
+            if (GamingNavigation.SelectedItem is not ListViewItem activeItem || activeItem.ActualWidth <= 0
+                || activeItem.ActualWidth > GamingSidebar.ActualWidth - 4
+                || GamingSidebarClip.Rect.Width != GamingSidebar.ActualWidth)
+                throw new InvalidOperationException("The selected compact sidebar item exceeded the sidebar bounds.");
+            if (VisualTreeHelper.GetChild(activeItem, 0) is not Microsoft.UI.Xaml.Controls.Primitives.ListViewItemPresenter
+                { SelectionIndicatorVisualEnabled: true, CornerRadius.TopLeft: 7 })
+                throw new InvalidOperationException("The sidebar selection marker or rounded background was not loaded.");
+            if (DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Nearest) is { } display
+                && (AppWindow.Size.Width > display.WorkArea.Width || AppWindow.Size.Height > display.WorkArea.Height))
+                throw new InvalidOperationException("Theme resizing exceeded the available display area.");
+            App.Settings.Current.GamingSidebarCollapsed = false;
+            ApplySidebarWidth();
+            if (GamingSidebar.Width != 176)
+                throw new InvalidOperationException("The gaming sidebar could not expand.");
+            App.Settings.Current.GamingSidebarCollapsed = previousSidebarState;
+            App.Settings.Current.Appearance = AppAppearance.Windows;
+            ApplyAppearance();
+            await Task.Delay(200);
+            if (GamingSidebar.Visibility != Visibility.Collapsed || !Navigation.IsPaneVisible
+                || ContentFrame.Content is not DashboardPage classic
+                || classic.FindName("ClassicDashboard") is not Grid { Visibility: Visibility.Visible })
+                throw new InvalidOperationException("The standard layout did not return.");
+
+            StartupDiagnostics.Write("ROG and Legion dashboards, sidebar, and page layout smoke passed.");
+        }
+        catch (Exception exception)
+        {
+            StartupDiagnostics.Write("ROG dashboard smoke failed.", exception);
+            Environment.ExitCode = 1;
+        }
+        finally
+        {
+            Close();
+        }
+    }
+
+    private static void RequireCenteredDashboard(DashboardPage page, string name)
+    {
+        var root = (Grid)page.FindName("DashboardLayoutRoot");
+        var dashboard = (Grid)page.FindName(name);
+        var offset = dashboard.TransformToVisual(root).TransformPoint(new Windows.Foundation.Point(0, 0));
+        var expectedX = (root.ActualWidth - dashboard.ActualWidth) / 2;
+        var expectedY = (root.ActualHeight - dashboard.ActualHeight) / 2;
+        if (Math.Abs(offset.X - expectedX) > 2 || Math.Abs(offset.Y - expectedY) > 2)
+            throw new InvalidOperationException($"{name} was not centered in its layout area.");
+    }
+
+    private void RequireRogWorkspace(string tag)
+    {
+        if (ContentFrame.Content is not Page page || page.FindName("Workspace") is not RogPageLayout workspace
+            || !workspace.IsRogLayout || workspace.ActualWidth <= 0
+            || !workspace.Children.OfType<Border>()
+                .Any(card => ReferenceEquals(card.Style, Application.Current.Resources["RogSectionStyle"])))
+            throw new InvalidOperationException($"ROG layout did not load on {tag}.");
+    }
+
+    private static async Task RequireDetailsLayoutAsync(DetailsPage page)
+    {
+        var sections = (Grid)page.FindName("SectionGrid");
+        for (int i = 0; sections.Children.Count == 0 && i < 25; i++)
+            await Task.Delay(200);
+        if (sections.Children.Count == 0 || ((Button)page.FindName("CopyButton")).IsEnabled == false)
+            throw new InvalidOperationException("Details did not display the hardware report.");
+        var virtualAdapters = (Expander)page.FindName("VirtualAdapters");
+        if (virtualAdapters.Visibility == Visibility.Visible)
+        {
+            var adapterGrid = (Grid)page.FindName("VirtualAdapterGrid");
+            if (virtualAdapters.IsExpanded || adapterGrid.Children.Count == 0
+                || !ReferenceEquals(virtualAdapters.Template, Application.Current.Resources["GamingExpanderTemplate"]))
+                throw new InvalidOperationException("Virtual adapters did not load in a collapsed group.");
+            virtualAdapters.IsExpanded = true;
+            await Task.Delay(150);
+            if (adapterGrid.ActualHeight <= 0)
+                throw new InvalidOperationException("The expanded graphics adapter list did not become visible.");
+            virtualAdapters.IsExpanded = false;
         }
     }
 
@@ -309,11 +506,10 @@ public sealed partial class MainWindow : Window
             var selected = ContentFrame.Content is PerformancePage
                 && (Navigation.SelectedItem as NavigationViewItem)?.Tag?.ToString() == "performance"
                 && !Navigation.IsBackEnabled;
-            var shortcutBackHidden = Navigation.IsBackButtonVisible == NavigationViewBackButtonVisible.Collapsed;
+            var shortcutBackHidden = PageBackButton.Visibility == Visibility.Collapsed;
             NavigateTo("dashboard");
             NavigateTo("performance", asSubpage: true);
-            var childBackVisible = Navigation.IsBackEnabled
-                && Navigation.IsBackButtonVisible == NavigationViewBackButtonVisible.Visible;
+            var childBackVisible = PageBackButton.Visibility == Visibility.Visible;
             GoBack();
             await Task.Delay(300);
             var back = ContentFrame.Content is DashboardPage
@@ -322,7 +518,7 @@ public sealed partial class MainWindow : Window
             Navigation.SelectedItem = Navigation.MenuItems.OfType<NavigationViewItem>()
                 .First(item => item.Tag?.ToString() == "performance");
             var rootBackHidden = ContentFrame.Content is PerformancePage && !ContentFrame.CanGoBack
-                && Navigation.IsBackButtonVisible == NavigationViewBackButtonVisible.Collapsed;
+                && PageBackButton.Visibility == Visibility.Collapsed;
             StartupDiagnostics.Write($"Shell navigation smoke: selected={selected}; back={back}; historyClean={historyClean}; rootBackHidden={rootBackHidden}; shortcutBackHidden={shortcutBackHidden}; childBackVisible={childBackVisible}");
         }
         catch (Exception exception) { StartupDiagnostics.Write("Shell navigation smoke failed.", exception); }
@@ -370,17 +566,195 @@ public sealed partial class MainWindow : Window
 
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr window);
 
-    public void ApplyTheme(string mode)
+    private void OnWindowThemeChanged(ThemeSettings sender, object args) =>
+        DispatcherQueue.TryEnqueue(() => ApplyAppearance());
+
+    internal void ApplyAppearance(bool adjustWindowSize = false)
     {
-        if (Content is FrameworkElement root)
+        var settings = App.Settings.Current;
+        ActiveAppearance = AppAppearance.Windows;
+        if (settings.EffectiveAppearance != AppAppearance.Windows)
         {
-            root.RequestedTheme = mode switch
+            try
             {
-                "Light" => ElementTheme.Light,
-                "Dark" => ElementTheme.Dark,
-                _ => ElementTheme.Default
-            };
+                if (_themeSettings?.HighContrast == false)
+                    ActiveAppearance = settings.EffectiveAppearance;
+            }
+            catch (Exception exception)
+            {
+                StartupDiagnostics.Write("Cannot read the window contrast theme.", exception);
+            }
         }
+        Shell.RequestedTheme = IsGamingAppearanceActive ? ElementTheme.Dark : settings.ThemeMode switch
+        {
+            "Light" => ElementTheme.Light,
+            "Dark" => ElementTheme.Dark,
+            _ => ElementTheme.Default
+        };
+
+        var visibility = IsGamingAppearanceActive ? Visibility.Visible : Visibility.Collapsed;
+        GamingShellBackground.Visibility = visibility;
+        GamingTitleBackground.Visibility = visibility;
+        GamingTitleIcon.Visibility = visibility;
+        GamingSidebar.Visibility = visibility;
+        RogWorkspaceBackdrop.Visibility = IsRogAppearanceActive ? Visibility.Visible : Visibility.Collapsed;
+        TitleBarRow.Height = new GridLength(IsGamingAppearanceActive ? 34 : 48);
+        Navigation.IsPaneVisible = !IsGamingAppearanceActive;
+        UpdateBackNavigation();
+        DefaultTitleIcon.Visibility = IsGamingAppearanceActive ? Visibility.Collapsed : Visibility.Visible;
+        SystemBackdrop = IsGamingAppearanceActive ? null : SystemBackdrop ?? new MicaBackdrop();
+        if (IsGamingAppearanceActive)
+        {
+            ApplyGamingPalette(ActiveAppearance == AppAppearance.Legion);
+            ApplySidebarWidth();
+        }
+        var cardStroke = (SolidColorBrush)Application.Current.Resources["CardStrokeBrush"];
+        cardStroke.Color = IsRogAppearanceActive
+            ? Color.FromArgb(255, 60, 58, 62)
+            : Color.FromArgb(31, 127, 132, 144);
+        AppearanceChanged?.Invoke(this, EventArgs.Empty);
+        if (adjustWindowSize) ResizeForAppearance();
+    }
+
+    private double WindowScale => Math.Max(96u, GetDpiForWindow(WinRT.Interop.WindowNative.GetWindowHandle(this))) / 96d;
+
+    private void ResizeForAppearance()
+    {
+        if (AppWindow.Presenter is OverlappedPresenter { State: not OverlappedPresenterState.Restored }) return;
+
+        // Size the dashboard and sidebar separately so an expanded sidebar leaves the same room for the dashboard.
+        var (windowWidth, windowHeight, stackedBelow) = ActiveAppearance switch
+        {
+            AppAppearance.Rog => (1060 + GamingSidebar.Width, 684, DashboardPage.RogStackedBelow),
+            AppAppearance.Legion => (1090 + GamingSidebar.Width, 624, DashboardPage.LegionStackedBelow),
+            _ => (1180d, 760, 0d)
+        };
+        var scale = WindowScale;
+        var width = (int)Math.Round(windowWidth * scale);
+        var height = (int)Math.Round(windowHeight * scale);
+        var display = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Nearest);
+        if (display is null)
+        {
+            AppWindow.Resize(new Windows.Graphics.SizeInt32(width, height));
+            return;
+        }
+
+        var work = display.WorkArea;
+        width = Math.Min(width, work.Width);
+        var stacks = IsGamingAppearanceActive && width / scale - GamingSidebar.Width < stackedBelow;
+        height = stacks ? work.Height : Math.Min(height, work.Height);
+        var position = AppWindow.Position;
+        var x = Math.Clamp(position.X, work.X, work.X + work.Width - width);
+        var y = Math.Clamp(position.Y, work.Y, work.Y + work.Height - height);
+        AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(x, y, width, height));
+    }
+
+    private void RequireFittedDashboard(DashboardPage page, int contentWidth, int windowHeight)
+    {
+        var scale = WindowScale;
+        var width = (int)Math.Round((contentWidth + GamingSidebar.Width) * scale);
+        var height = (int)Math.Round(windowHeight * scale);
+        var display = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Nearest);
+        if (display is not null && (width > display.WorkArea.Width || height > display.WorkArea.Height)) return;
+
+        var scroll = (ScrollViewer)page.FindName("DashboardScroller");
+        bool overflowing = ActiveAppearance == AppAppearance.Legion
+            ? scroll.ScrollableHeight > 0 || scroll.ComputedVerticalScrollBarVisibility == Visibility.Visible
+            : scroll.ScrollableHeight > 2;
+        if (AppWindow.Size.Width != width || AppWindow.Size.Height != height || overflowing)
+            throw new InvalidOperationException($"{ActiveAppearance} overview did not fit its startup window: "
+                + $"{AppWindow.Size.Width}×{AppWindow.Size.Height}, expected {width}×{height}, scroll {scroll.ScrollableHeight:F1}.");
+    }
+
+    [DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(IntPtr hwnd);
+
+    private void ApplyGamingPalette(bool legion)
+    {
+        GamingShellBackground.Background = new SolidColorBrush(legion ? Color.FromArgb(255, 13, 19, 28) : Color.FromArgb(255, 17, 17, 17));
+        GamingSidebar.Background = GamingTitleBackground.Background =
+            new SolidColorBrush(legion ? Color.FromArgb(255, 21, 31, 43) : Color.FromArgb(255, 24, 24, 24));
+        GamingTitleIcon.Background = new SolidColorBrush(legion ? Color.FromArgb(255, 0, 119, 158) : Color.FromArgb(255, 206, 33, 67));
+        ((SolidColorBrush)GamingNavigation.Resources["ListViewItemBackgroundSelected"]).Color =
+            legion ? Color.FromArgb(255, 24, 60, 78) : Color.FromArgb(255, 62, 32, 38);
+        ((SolidColorBrush)GamingNavigation.Resources["ListViewItemBackgroundSelectedPointerOver"]).Color =
+            legion ? Color.FromArgb(255, 32, 76, 96) : Color.FromArgb(255, 80, 39, 47);
+        ((SolidColorBrush)GamingNavigation.Resources["ListViewItemSelectionIndicatorBrush"]).Color =
+            legion ? Color.FromArgb(255, 53, 217, 247) : Color.FromArgb(255, 255, 50, 79);
+        var resources = Application.Current.Resources;
+        ((SolidColorBrush)resources["GamingToggleFillBrush"]).Color =
+            legion ? Color.FromArgb(255, 0, 103, 145) : Color.FromArgb(255, 199, 25, 63);
+        ((SolidColorBrush)resources["GamingToggleHoverBrush"]).Color =
+            legion ? Color.FromArgb(255, 0, 129, 174) : Color.FromArgb(255, 236, 49, 83);
+        ((SolidColorBrush)resources["GamingTogglePressedBrush"]).Color =
+            legion ? Color.FromArgb(255, 0, 77, 108) : Color.FromArgb(255, 165, 19, 51);
+        ((SolidColorBrush)resources["GamingToggleStrokeBrush"]).Color =
+            legion ? Color.FromArgb(255, 91, 209, 246) : Color.FromArgb(255, 250, 87, 115);
+    }
+
+    private void GamingSidebarToggle_Click(object sender, RoutedEventArgs e)
+    {
+        App.Settings.Update(settings => settings.GamingSidebarCollapsed = !settings.GamingSidebarCollapsed);
+        ApplySidebarWidth(animate: true);
+        AnimateNavigationIcon((FrameworkElement)GamingSidebarToggle.Content);
+    }
+
+    private void GamingSidebar_SizeChanged(object sender, SizeChangedEventArgs args) =>
+        GamingSidebarClip.Rect = new Windows.Foundation.Rect(0, 0, args.NewSize.Width, args.NewSize.Height);
+
+    private void ApplySidebarWidth(bool animate = false)
+    {
+        bool collapsed = App.Settings.Current.GamingSidebarCollapsed;
+        var previousWidth = GamingSidebar.ActualWidth;
+        var targetWidth = collapsed ? 56d : 176d;
+        _sidebarTransition?.Stop();
+        GamingSidebar.Width = targetWidth;
+        var action = collapsed ? "展开侧边栏" : "收起侧边栏";
+        AutomationProperties.SetName(GamingSidebarToggle, action);
+        ToolTipService.SetToolTip(GamingSidebarToggle, action);
+        foreach (var item in GamingNavigation.Items.OfType<ListViewItem>())
+        {
+            var label = ((StackPanel)item.Content).Children.OfType<TextBlock>().Single();
+            label.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+            ToolTipService.SetToolTip(item, collapsed ? label.Text : null);
+        }
+
+        if (!animate || previousWidth <= 0 || previousWidth == targetWidth || !AnimationsEnabled()) return;
+
+        var widthAnimation = new DoubleAnimation
+        {
+            From = previousWidth,
+            To = targetWidth,
+            Duration = TimeSpan.FromMilliseconds(180),
+            EnableDependentAnimation = true,
+            FillBehavior = FillBehavior.Stop,
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        Storyboard.SetTarget(widthAnimation, GamingSidebar);
+        Storyboard.SetTargetProperty(widthAnimation, nameof(FrameworkElement.Width));
+        _sidebarTransition = new Storyboard();
+        _sidebarTransition.Children.Add(widthAnimation);
+        _sidebarTransition.Begin();
+    }
+
+    private static bool AnimationsEnabled()
+    {
+        try { return new Windows.UI.ViewManagement.UISettings().AnimationsEnabled; }
+        catch (COMException) { return false; }
+    }
+
+    private static void AnimateNavigationIcon(FrameworkElement icon)
+    {
+        if (!AnimationsEnabled() || icon.ActualWidth <= 0) return;
+        var visual = ElementCompositionPreview.GetElementVisual(icon);
+        visual.CenterPoint = new Vector3((float)icon.ActualWidth / 2, (float)icon.ActualHeight / 2, 0);
+        var animation = visual.Compositor.CreateVector3KeyFrameAnimation();
+        animation.Duration = TimeSpan.FromMilliseconds(320);
+        animation.InsertKeyFrame(0f, new Vector3(0.79f, 0.79f, 1));
+        animation.InsertKeyFrame(0.47f, new Vector3(1.13f, 1.13f, 1));
+        animation.InsertKeyFrame(0.73f, new Vector3(0.97f, 0.97f, 1));
+        animation.InsertKeyFrame(1f, Vector3.One);
+        visual.StartAnimation(nameof(visual.Scale), animation);
     }
 
     private void Navigation_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -393,8 +767,40 @@ public sealed partial class MainWindow : Window
 
     private void Navigation_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
     {
-        if (args.InvokedItemContainer is NavigationViewItem item && item.Tag is string tag) NavigateTo(tag);
+        if (args.InvokedItemContainer is not NavigationViewItem { Tag: string tag } item) return;
+        if (item.Icon is { } icon) AnimateNavigationIcon(icon);
+        NavigateTo(tag);
     }
+
+    private void GamingNavigation_ItemClick(object sender, ItemClickEventArgs args)
+    {
+        var item = args.ClickedItem as ListViewItem ?? GamingNavigation.Items.OfType<ListViewItem>()
+            .FirstOrDefault(candidate => ReferenceEquals(candidate.Content, args.ClickedItem));
+        if (item is not null) ActivateGamingNavigationItem(item);
+    }
+
+    private void GamingNavigation_SelectionChanged(object sender, SelectionChangedEventArgs args)
+    {
+        if (!_syncingNavigation && GamingNavigation.SelectedItem is ListViewItem item)
+            ActivateGamingNavigationItem(item);
+    }
+
+    private void ActivateGamingNavigationItem(ListViewItem item)
+    {
+        if (item.Content is StackPanel panel && panel.Children.FirstOrDefault() is Grid icon
+            && _queuedNavigationIcons.Add(icon))
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                _queuedNavigationIcons.Remove(icon);
+                AnimateNavigationIcon(icon);
+            });
+        }
+
+        if (item.Tag is string tag) NavigateTo(tag);
+    }
+
+    private void PageBackButton_Click(object sender, RoutedEventArgs e) => GoBack();
 
     public void NavigateTo(string tag, bool asSubpage = false)
     {
@@ -415,7 +821,12 @@ public sealed partial class MainWindow : Window
         var item = Navigation.MenuItems.Concat(Navigation.FooterMenuItems)
             .OfType<NavigationViewItem>().FirstOrDefault(candidate => candidate.Tag?.ToString() == tag);
         _syncingNavigation = true;
-        try { Navigation.SelectedItem = item; }
+        try
+        {
+            Navigation.SelectedItem = item;
+            GamingNavigation.SelectedItem = GamingNavigation.Items.OfType<ListViewItem>()
+                .FirstOrDefault(candidate => candidate.Tag?.ToString() == tag);
+        }
         finally { _syncingNavigation = false; }
         UpdateBackNavigation();
     }
@@ -423,11 +834,8 @@ public sealed partial class MainWindow : Window
     private void UpdateBackNavigation()
     {
         Navigation.IsBackEnabled = ContentFrame.CanGoBack;
-        Navigation.IsBackButtonVisible = ContentFrame.CanGoBack
-            ? NavigationViewBackButtonVisible.Visible : NavigationViewBackButtonVisible.Collapsed;
+        PageBackButton.Visibility = ContentFrame.CanGoBack ? Visibility.Visible : Visibility.Collapsed;
     }
-
-    private void Navigation_BackRequested(NavigationView sender, NavigationViewBackRequestedEventArgs args) => GoBack();
 
     private void GoBack()
     {

@@ -10,13 +10,16 @@ internal static class StartupDiagnostics
         "GProControl",
         "Logs");
 
-    internal static string LogPath => Path.Combine(LogDirectory, "startup.log");
+    private static string OutputDirectory { get; } =
+        Environment.GetCommandLineArgs().Contains("--rog-ui-smoke") ? AppContext.BaseDirectory : LogDirectory;
+
+    internal static string LogPath => Path.Combine(OutputDirectory, "startup.log");
 
     internal static void Write(string message, Exception? exception = null)
     {
         try
         {
-            Directory.CreateDirectory(LogDirectory);
+            Directory.CreateDirectory(OutputDirectory);
             var text = new StringBuilder()
                 .Append(DateTimeOffset.Now.ToString("O"))
                 .Append(" | ")

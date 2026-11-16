@@ -4,21 +4,21 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:views="using:GProControl.Views">
     <ScrollViewer>
-        <StackPanel Padding="28,20,28,32" Spacing="18">
-            <StackPanel Spacing="5">
+        <views:RogPageLayout x:Name="Workspace" Padding="28,20,28,32" Spacing="18">
+            <StackPanel views:RogPageLayout.Band="0" views:RogPageLayout.Lane="0" Spacing="5">
                 <TextBlock Text="性能模式" FontSize="28" FontWeight="SemiBold" />
                 <TextBlock Text="通过原厂 MiDeviceService 切换 EC 功耗与散热策略" Opacity="0.62" />
             </StackPanel>
-            <InfoBar x:Name="ControlInfo" IsOpen="True" Severity="Informational"
+            <InfoBar views:RogPageLayout.Band="1" views:RogPageLayout.Lane="0" x:Name="ControlInfo" IsOpen="True" Severity="Informational"
                      Title="安全检查中" Message="正在核对 TM2211、原厂版本和后台服务。" />
-            <Border Style="{StaticResource DashboardCardStyle}">
+            <Border views:RogPageLayout.Band="2" views:RogPageLayout.Lane="1" Style="{StaticResource DashboardCardStyle}">
                 <StackPanel Spacing="16">
                     <Grid>
                         <StackPanel>
                             <TextBlock Text="EC 性能模式" Style="{StaticResource SectionTitleStyle}" />
                             <TextBlock x:Name="CurrentModeText" Text="正在读取当前模式…" Opacity="0.55" FontSize="12" />
                         </StackPanel>
-                        <Button x:Name="RefreshModeButton" Content="重新读取" HorizontalAlignment="Right"
+                        <Button x:Name="RefreshModeButton" Style="{StaticResource SectionButtonStyle}" Content="重新读取" HorizontalAlignment="Right"
                                 VerticalAlignment="Center" Click="RefreshModeButton_Click" />
                     </Grid>
                     <Grid x:Name="ModeSelector" ColumnSpacing="18">
@@ -41,7 +41,7 @@
                                Opacity="0.55" FontSize="12" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
-            <Grid ColumnSpacing="16">
+            <Grid views:RogPageLayout.Band="3" views:RogPageLayout.Lane="0" ColumnSpacing="16">
                 <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
                 <Border Style="{StaticResource DashboardCardStyle}">
                     <StackPanel Spacing="12">
@@ -53,21 +53,21 @@
                         </Grid>
                         <TextBlock x:Name="ScreenAccelerationStatus" Text="使用原厂 business type 30 写入，并以原厂服务状态通报回读。"
                                    Opacity="0.58" TextWrapping="Wrap" />
-                        <ToggleSwitch x:Name="ScreenAccelerationToggle" Header="实验性控制" Toggled="ScreenAccelerationToggle_Toggled" />
+                        <ToggleSwitch views:RogToggleSwitch.Adapt="True" x:Name="ScreenAccelerationToggle" Header="实验性控制" Toggled="ScreenAccelerationToggle_Toggled" />
                     </StackPanel>
                 </Border>
                 <Border Grid.Column="1" Style="{StaticResource DashboardCardStyle}">
                     <views:GraphicModeControl />
                 </Border>
             </Grid>
-            <Border Style="{StaticResource DashboardCardStyle}">
+            <Border views:RogPageLayout.Band="2" views:RogPageLayout.Lane="2" Style="{StaticResource DashboardCardStyle}">
                 <StackPanel Spacing="12">
                     <Grid>
                         <StackPanel>
                             <TextBlock Text="WLAN 加速" Style="{StaticResource SectionTitleStyle}" />
                             <TextBlock Text="直接显示小米控制中心后台服务的路由加速结果" Opacity="0.55" FontSize="12" />
                         </StackPanel>
-                        <Button x:Name="RefreshWlanButton" Content="刷新状态" HorizontalAlignment="Right"
+                        <Button x:Name="RefreshWlanButton" Style="{StaticResource SectionButtonStyle}" Content="刷新状态" HorizontalAlignment="Right"
                                 VerticalAlignment="Center" Click="RefreshWlanButton_Click" />
                     </Grid>
                     <TextBlock x:Name="WlanStatusText" Text="正在读取原厂状态…" TextWrapping="Wrap" />
@@ -75,6 +75,6 @@
                                Opacity="0.55" FontSize="12" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
-        </StackPanel>
+        </views:RogPageLayout>
     </ScrollViewer>
 </Page>

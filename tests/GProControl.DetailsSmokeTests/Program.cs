@@ -1,10 +1,21 @@
 using GProControl.Models;
 using GProControl.Services;
 
-var fixture=new HardwareDetails([new("CPU",[new("型号","Fixture CPU")])],"PRIVATE-SERIAL-TEST",DateTime.Now);
+const string virtualAdapter = "Parsec Virtual Display Adapter";
+var fixture=new HardwareDetails([
+    new("CPU",[new("型号","Fixture CPU")]),
+    new("显卡", [new("型号", virtualAdapter)])
+    {
+        Kind = HardwareDetailsService.ClassifyGraphicsAdapter(virtualAdapter)
+    }
+],"PRIVATE-SERIAL-TEST",DateTime.Now);
 if(fixture.ToReport().Contains("PRIVATE-SERIAL-TEST") || !fixture.ToReport(true).Contains("PRIVATE-SERIAL-TEST"))
     throw new InvalidOperationException("Report serial privacy failed.");
 if(!fixture.ToReport().Contains("Fixture CPU")) throw new InvalidOperationException("Report is empty.");
+if (fixture.Sections[1].Kind != HardwareDetailSectionKind.VirtualDisplayAdapter
+    || HardwareDetailsService.ClassifyGraphicsAdapter("NVIDIA GeForce RTX 4060 Laptop GPU") != HardwareDetailSectionKind.GraphicsAdapter
+    || !fixture.ToReport().Contains(virtualAdapter))
+    throw new InvalidOperationException("Virtual adapter grouping must keep physical GPUs and preserve the copied report.");
 foreach(var link in SupportLinks.All)
 {
     var uri=new Uri(link.Address);

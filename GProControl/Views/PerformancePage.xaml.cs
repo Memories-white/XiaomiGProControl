@@ -52,6 +52,7 @@ public sealed partial class PerformancePage : Page
         ControlInfo.Title = state.CanWrite ? "硬件写入已解锁" : "硬件写入已锁定";
         ControlInfo.Message = state.Message;
         ControlInfo.Severity = state.CanWrite ? InfoBarSeverity.Warning : InfoBarSeverity.Informational;
+        RoutineNotice.ApplyVisibility(ControlInfo, routine: state.CanWrite);
     }
 
     private async void RefreshModeButton_Click(object sender, RoutedEventArgs e) => await RefreshModeAsync();
@@ -186,6 +187,8 @@ public sealed partial class PerformancePage : Page
             ControlInfo.Severity = result.Submitted ? InfoBarSeverity.Warning : InfoBarSeverity.Error;
         }
 
+        RoutineNotice.ApplyVisibility(ControlInfo, routine: false);
+        ControlInfo.IsOpen = true;
         SetModeButtonsEnabled(App.HardwareControl.State.CanWrite);
     }
 

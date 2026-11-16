@@ -153,6 +153,34 @@ try
         settings.Update(value => value.ShowNetworkSpeedInMegabytes = false);
         Require(!new AppSettingsStore(settingsPath).Current.ShowNetworkSpeedInMegabytes,
             "switching back to Kbps must survive settings reload");
+        Require(!settings.Current.UseRogAppearance, "legacy settings must keep the Windows 11 appearance");
+        Require(!settings.Current.HideRoutineNotices, "legacy settings must continue to show routine notices");
+        settings.Update(value => value.HideRoutineNotices = true);
+        Require(new AppSettingsStore(settingsPath).Current.HideRoutineNotices,
+            "routine notice visibility must survive settings reload");
+        settings.Update(value => value.HideRoutineNotices = false);
+        Require(!new AppSettingsStore(settingsPath).Current.HideRoutineNotices,
+            "restoring routine notices must survive settings reload");
+        settings.Update(value =>
+        {
+            value.ThemeMode = "Light";
+            value.UseRogAppearance = true;
+        });
+        Require(new AppSettingsStore(settingsPath).Current is { UseRogAppearance: true, ThemeMode: "Light" },
+            "ROG appearance and the previous theme must survive settings reload");
+        Require(new AppSettingsStore(settingsPath).Current.EffectiveAppearance == AppAppearance.Rog,
+            "a prior ROG preference must be used when the newer appearance field is absent");
+        settings.Update(value =>
+        {
+            value.Appearance = AppAppearance.Legion;
+            value.GamingSidebarCollapsed = true;
+        });
+        Require(new AppSettingsStore(settingsPath).Current is
+            { EffectiveAppearance: AppAppearance.Legion, GamingSidebarCollapsed: true, ThemeMode: "Light" },
+            "Legion appearance and the compact sidebar preference must survive settings reload");
+        settings.Update(value => value.UseRogAppearance = false);
+        Require(new AppSettingsStore(settingsPath).Current is { UseRogAppearance: false, ThemeMode: "Light" },
+            "switching back to the Windows 11 appearance must preserve its theme");
         settings.Update(value =>
         {
             value.LastWaveLighting = new GProControl.Models.WaveLightingProfile(2, 0, 3, 3);

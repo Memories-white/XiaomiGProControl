@@ -3,11 +3,20 @@ using System.Text.Json;
 namespace GProControl.Services;
 
 public enum CloseAction { Ask, Background, Exit }
+public enum AppAppearance { Windows, Rog, Legion }
 
 public sealed class AppSettings
 {
     public string ThemeMode { get; set; } = "System";
+    public bool UseRogAppearance { get; set; }
+    public AppAppearance? Appearance { get; set; }
+    public bool GamingSidebarCollapsed { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public AppAppearance EffectiveAppearance => Appearance is { } selected && Enum.IsDefined(selected)
+        ? selected
+        : UseRogAppearance ? AppAppearance.Rog : AppAppearance.Windows;
     public bool ShowNetworkSpeedInMegabytes { get; set; }
+    public bool HideRoutineNotices { get; set; }
     public bool StartWithWindows { get; set; } = true;
     public bool StartInBackground { get; set; }
     public CloseAction CloseAction { get; set; } = CloseAction.Ask;

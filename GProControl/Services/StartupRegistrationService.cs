@@ -24,7 +24,7 @@ public static class StartupRegistrationService
             _ = root.GetTask(TaskName);
             return true;
         }
-        catch (COMException)
+        catch (Exception ex) when (ex is COMException or IOException or UnauthorizedAccessException or InvalidOperationException)
         {
             return false;
         }
@@ -95,7 +95,7 @@ public static class StartupRegistrationService
 
             return true;
         }
-        catch (Exception ex) when (ex is COMException or UnauthorizedAccessException or InvalidOperationException)
+        catch (Exception ex) when (ex is COMException or IOException or UnauthorizedAccessException or InvalidOperationException)
         {
             message = $"更新开机启动失败：{ex.Message}";
             return false;

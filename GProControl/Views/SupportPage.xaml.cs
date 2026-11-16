@@ -12,6 +12,7 @@ public sealed partial class SupportPage : Page
     public SupportPage()
     {
         InitializeComponent(); LinkList.ItemsSource=SupportLinks.All;
+        RoutineNotice.ApplyVisibility(StatusBar, routine: true);
         VersionText.Text="G Pro Control "+_version;
         Loaded += (_,_) => {
             var bridge=new OriginalControlCenterProbe().Capture();
@@ -24,7 +25,7 @@ public sealed partial class SupportPage : Page
     private async Task OpenAsync(string address)
     {
         try {if(!await Launcher.LaunchUriAsync(new Uri(address))) throw new IOException("默认浏览器未能打开页面。");}
-        catch(Exception exception) {StatusBar.Title="页面打开失败"; StatusBar.Message=exception.Message; StatusBar.Severity=InfoBarSeverity.Error;}
+        catch(Exception exception) { ShowResult("页面打开失败", exception.Message, InfoBarSeverity.Error); }
     }
     private async void CopyDiagnostics_Click(object sender,RoutedEventArgs e)
     {
@@ -36,9 +37,9 @@ public sealed partial class SupportPage : Page
             var data=new DataPackage();
             data.SetText($"G Pro Control {_version}\n原厂组件：{bridge.Version ?? "未检测到"}\n后台通信可用：{bridge.IsTransportAvailable}\n\n"+details.ToReport());
             Clipboard.SetContent(data);
-            StatusBar.Title="诊断摘要已复制"; StatusBar.Message="你可以检查内容后粘贴到反馈页面。"; StatusBar.Severity=InfoBarSeverity.Success;
+            ShowResult("诊断摘要已复制", "你可以检查内容后粘贴到反馈页面。", InfoBarSeverity.Success);
         }
-        catch(Exception exception) {StatusBar.Title="复制失败"; StatusBar.Message=exception.Message; StatusBar.Severity=InfoBarSeverity.Error;}
+        catch(Exception exception) { ShowResult("复制失败", exception.Message, InfoBarSeverity.Error); }
         finally {CopyDiagnosticsButton.IsEnabled=true;}
     }
 
@@ -59,20 +60,27 @@ public sealed partial class SupportPage : Page
             if (selected is null) return;
 
             await StartupDiagnostics.ExportAsync(selected.Path, _version);
-            StatusBar.Title = "运行日志已导出";
-            StatusBar.Message = selected.Path;
-            StatusBar.Severity = InfoBarSeverity.Success;
+            ShowResult("运行日志已导出", selected.Path, InfoBarSeverity.Success);
         }
         catch (Exception exception)
         {
             StartupDiagnostics.Write("Runtime log export failed.", exception);
-            StatusBar.Title = "运行日志导出失败";
-            StatusBar.Message = exception is FileNotFoundException ? "暂时没有可导出的运行日志。" : exception.Message;
-            StatusBar.Severity = InfoBarSeverity.Error;
+            ShowResult("运行日志导出失败",
+                exception is FileNotFoundException ? "暂时没有可导出的运行日志。" : exception.Message,
+                InfoBarSeverity.Error);
         }
         finally
         {
             ExportLogButton.IsEnabled = true;
         }
+    }
+
+    private void ShowResult(string title, string message, InfoBarSeverity severity)
+    {
+        StatusBar.Title = title;
+        StatusBar.Message = message;
+        StatusBar.Severity = severity;
+        RoutineNotice.ApplyVisibility(StatusBar, routine: false);
+        StatusBar.IsOpen = true;
     }
 }

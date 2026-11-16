@@ -38,7 +38,7 @@ public sealed class HardwareDetailsService
             if (gpu?.Name == Text(item,"Name") && gpu.TotalMemoryBytes is ulong bytes) rows.Add(new("独立显存",Capacity(bytes)));
             if (Number(item,"CurrentHorizontalResolution") > 0) rows.Add(new("当前输出",$"{Text(item,"CurrentHorizontalResolution")} × {Text(item,"CurrentVerticalResolution")} · {Unit(item,"CurrentRefreshRate","Hz")}"));
             return rows;
-        });
+        }, kind: item => ClassifyGraphicsAdapter(Text(item, "Name")));
         Add("内存模块", "Win32_PhysicalMemory", ["DeviceLocator","Manufacturer","Capacity","ConfiguredClockSpeed","SMBIOSMemoryType","PartNumber"], item =>
             [new("插槽",Text(item,"DeviceLocator")),new("厂商 / 型号",$"{Text(item,"Manufacturer")} · {Text(item,"PartNumber")}"),
              new("容量",Capacity(Number(item,"Capacity"))),new("类型",Number(item,"SMBIOSMemoryType") switch {26=>"DDR4",34=>"DDR5",30=>"LPDDR4",35=>"LPDDR5",_=>"未识别"}),
@@ -51,7 +51,8 @@ public sealed class HardwareDetailsService
             [new("设备",Text(item,"InstanceName")),new("物理尺寸",Size(item))], "root\\wmi");
         return new(sections, serial, DateTime.Now);
 
-        void Add(string title, string cls, string[] fields, Func<ManagementObject,IReadOnlyList<HardwareDetailRow>> format, string scope="root\\cimv2")
+        void Add(string title, string cls, string[] fields, Func<ManagementObject,IReadOnlyList<HardwareDetailRow>> format,
+            string scope="root\\cimv2", Func<ManagementObject, HardwareDetailSectionKind>? kind = null)
         {
             try
             {
@@ -60,7 +61,14 @@ public sealed class HardwareDetailsService
                 using var result=searcher.Get(); var index=0;
                 foreach(ManagementObject item in result)
                 {
-                    using(item) sections.Add(new(index++ == 0 ? title : $"{title} {index}",format(item)));
+                    using (item)
+                    {
+                        var sectionTitle = index++ == 0 ? title : $"{title} {index}";
+                        sections.Add(new(sectionTitle, format(item))
+                        {
+                            Kind = kind?.Invoke(item) ?? HardwareDetailSectionKind.General
+                        });
+                    }
                 }
                 if(index==0) sections.Add(new(title,[new("状态","未检测到或设备未提供") ]));
             }
@@ -68,6 +76,14 @@ public sealed class HardwareDetailsService
             { sections.Add(new(title,[new("状态","当前无法读取") ])); }
         }
     }
+
+    internal static HardwareDetailSectionKind ClassifyGraphicsAdapter(string name) =>
+        (name.Contains("Virtual Display", StringComparison.OrdinalIgnoreCase)
+        || name.Contains("Indirect Display", StringComparison.OrdinalIgnoreCase)
+        || name.Contains("Remote Display", StringComparison.OrdinalIgnoreCase)
+        || name.Contains("虚拟显示", StringComparison.Ordinal))
+            ? HardwareDetailSectionKind.VirtualDisplayAdapter
+            : HardwareDetailSectionKind.GraphicsAdapter;
 
     private static string Text(ManagementObject item,string name) => Convert.ToString(item[name])?.Trim() is {Length:>0} text ? text : "未提供";
     private static ulong Number(ManagementObject item,string name) => ulong.TryParse(Convert.ToString(item[name]),out var value) ? value : 0;

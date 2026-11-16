@@ -1,22 +1,22 @@
 <Page
     x:Class="GProControl.Views.LightingPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:views="using:GProControl.Views" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ScrollViewer>
-        <StackPanel Padding="28,20,28,32" Spacing="18">
-            <StackPanel Spacing="5">
+        <views:RogPageLayout x:Name="Workspace" Padding="28,20,28,32" Spacing="18" LayoutModeChanged="Workspace_LayoutModeChanged">
+            <StackPanel views:RogPageLayout.Band="0" views:RogPageLayout.Lane="0" Spacing="5">
                 <TextBlock Text="键盘灯效" FontSize="28" FontWeight="SemiBold" />
                 <TextBlock Text="简洁地管理亮度、颜色与动态效果" Opacity="0.62" />
             </StackPanel>
 
-            <InfoBar x:Name="StatusInfoBar" IsOpen="True" Severity="Informational" Title="正在验证灯效控制"
+            <InfoBar views:RogPageLayout.Band="1" views:RogPageLayout.Lane="0" x:Name="StatusInfoBar" IsOpen="True" Severity="Informational" Title="正在验证灯效控制"
                      Message="正在读取键盘版本和当前灯效。" />
 
-            <Border Style="{StaticResource DashboardCardStyle}">
+            <Border views:RogPageLayout.Band="3" views:RogPageLayout.Lane="0" Style="{StaticResource DashboardCardStyle}">
                 <StackPanel Spacing="10">
                     <Grid>
                         <TextBlock Text="原厂灯效预设" Style="{StaticResource SectionTitleStyle}" />
-                        <Button x:Name="ResetPresetButton" Content="恢复当前效果默认参数" HorizontalAlignment="Right" Click="ResetPreset_Click" />
+                        <Button x:Name="ResetPresetButton" Style="{StaticResource SectionButtonStyle}" Content="恢复当前效果默认参数" HorizontalAlignment="Right" Click="ResetPreset_Click" />
                     </Grid>
                     <TextBlock Text="选择预设后点击“应用灯效”生效。光影随行与光音视界目前使用基础联动。" Opacity="0.6" FontSize="12" TextWrapping="Wrap" />
                     <ItemsControl x:Name="PresetList">
@@ -39,7 +39,7 @@
                 </StackPanel>
             </Border>
 
-            <Grid ColumnSpacing="18">
+            <Grid views:RogPageLayout.Band="2" views:RogPageLayout.Lane="0" ColumnSpacing="18">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="1.35*" />
                     <ColumnDefinition Width="*" />
@@ -66,7 +66,18 @@
                                 </LinearGradientBrush>
                             </Border.Background>
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
-                                <FontIcon Glyph="&#xE765;" FontSize="44" Opacity="0.88" />
+                                <FontIcon x:Name="ClassicKeyboardIcon" Glyph="&#xE765;" FontSize="44" Opacity="0.88" />
+                                <Viewbox x:Name="RogKeyboardArt" MaxWidth="280" MaxHeight="105" Stretch="Uniform"
+                                         Visibility="Collapsed" AutomationProperties.AccessibilityView="Raw">
+                                    <Canvas Width="280" Height="100">
+                                        <Path Stroke="#71666C" StrokeThickness="1.5" Fill="#181719"
+                                              Data="M 14,4 L 266,4 276,14 276,86 266,96 14,96 4,86 4,14 Z" />
+                                        <Path Stroke="#FF4166" StrokeThickness="1.2"
+                                              Data="M 16,18 L 264,18 M 16,32 L 264,32 M 16,46 L 264,46 M 16,60 L 264,60 M 16,74 L 80,74 M 202,74 L 264,74 M 96,70 L 186,70 186,83 96,83 Z" />
+                                        <Path Stroke="#6F5A65" StrokeThickness="1"
+                                              Data="M 16,19 L 16,62 M 32,19 L 32,62 M 48,19 L 48,62 M 64,19 L 64,62 M 80,19 L 80,62 M 96,19 L 96,62 M 112,19 L 112,62 M 128,19 L 128,62 M 144,19 L 144,62 M 160,19 L 160,62 M 176,19 L 176,62 M 192,19 L 192,62 M 208,19 L 208,62 M 224,19 L 224,62 M 240,19 L 240,62 M 264,19 L 264,62" />
+                                    </Canvas>
+                                </Viewbox>
                                 <StackPanel x:Name="MatrixPreviewPanel" Spacing="8" Visibility="Collapsed">
                                     <TextBlock Text="实时输出矩阵 · 7 × 17" FontSize="12" Opacity="0.6" HorizontalAlignment="Center" />
                                     <ItemsControl x:Name="MatrixPreviewList" Width="306" Height="98">
@@ -100,7 +111,7 @@
                             <TextBlock Text="键盘灯" FontWeight="SemiBold" />
                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
                                 <TextBlock x:Name="PowerValueText" Text="未知" VerticalAlignment="Center" Opacity="0.7" />
-                                <Button x:Name="PowerButton" Content="开关" IsEnabled="False" Click="Power_Click" />
+                                <Button x:Name="PowerButton" Style="{StaticResource SectionButtonStyle}" Content="开关" IsEnabled="False" Click="Power_Click" />
                             </StackPanel>
                         </Grid>
                         <StackPanel Spacing="8">
@@ -168,12 +179,12 @@
                             <TextBlock Text="动态长度" FontWeight="SemiBold" />
                             <ComboBox x:Name="LengthComboBox" HorizontalAlignment="Stretch" />
                         </StackPanel>
-                        <Button x:Name="ApplyButton" Content="应用灯效" Click="Apply_Click"
+                        <Button x:Name="ApplyButton" Style="{StaticResource SectionButtonStyle}" Content="应用灯效" Click="Apply_Click"
                                 IsEnabled="False" HorizontalAlignment="Stretch" />
                         <Button x:Name="StopAmbientButton" Content="停止动态灯效" Visibility="Collapsed" Click="StopAmbient_Click" HorizontalAlignment="Stretch" />
                     </StackPanel>
                 </Border>
             </Grid>
-        </StackPanel>
+        </views:RogPageLayout>
     </ScrollViewer>
 </Page>

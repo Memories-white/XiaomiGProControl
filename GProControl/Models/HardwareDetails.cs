@@ -1,7 +1,12 @@
 namespace GProControl.Models;
 
 public sealed record HardwareDetailRow(string Label, string Value);
-public sealed record HardwareDetailSection(string Title, IReadOnlyList<HardwareDetailRow> Rows);
+public enum HardwareDetailSectionKind { General, GraphicsAdapter, VirtualDisplayAdapter }
+
+public sealed record HardwareDetailSection(string Title, IReadOnlyList<HardwareDetailRow> Rows)
+{
+    public HardwareDetailSectionKind Kind { get; init; }
+}
 public sealed record HardwareDetails(IReadOnlyList<HardwareDetailSection> Sections, string SerialNumber, DateTime ObservedAt)
 {
     public string ToReport(bool includeSerial = false) =>

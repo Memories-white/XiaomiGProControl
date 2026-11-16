@@ -34,7 +34,13 @@ public sealed partial class SettingsPage : Page
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         App.HardwareControl.StateChanged += OnHardwareStateChanged;
+        StartupToggle.IsEnabled = false;
+        StartupBackgroundToggle.IsEnabled = false;
+        await App.StartupRegistrationWork;
+        if (!IsLoaded) return;
+
         ApplyApplicationSettings();
+        StartupToggle.IsEnabled = true;
         ApplyState(await App.HardwareControl.RefreshAsync());
     }
 
@@ -42,6 +48,8 @@ public sealed partial class SettingsPage : Page
     {
         _updating = true;
         var settings = App.Settings.Current;
+        AppearanceSelector.SelectedIndex = (int)settings.EffectiveAppearance;
+        ThemeSelector.IsEnabled = settings.EffectiveAppearance == AppAppearance.Windows;
         ThemeSelector.SelectedIndex = settings.ThemeMode switch
         {
             "Light" => 1,
@@ -49,6 +57,7 @@ public sealed partial class SettingsPage : Page
             _ => 0
         };
         NetworkSpeedUnitSelector.SelectedIndex = settings.ShowNetworkSpeedInMegabytes ? 1 : 0;
+        HideRoutineNoticesToggle.IsOn = settings.HideRoutineNotices;
         StartupToggle.IsOn = StartupRegistrationService.IsEnabled();
         StartupDetail.Text = App.StartupRegistrationMessage;
         StartupBackgroundToggle.IsOn = settings.StartInBackground;
@@ -61,6 +70,12 @@ public sealed partial class SettingsPage : Page
         _updating = false;
     }
 
+    private void HideRoutineNoticesToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_updating) return;
+        App.Settings.Update(value => value.HideRoutineNotices = HideRoutineNoticesToggle.IsOn);
+    }
+
     private void ThemeSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_updating || ThemeSelector.SelectedItem is not ComboBoxItem item || item.Tag is not string mode)
@@ -69,7 +84,21 @@ public sealed partial class SettingsPage : Page
         }
 
         App.Settings.Update(value => value.ThemeMode = mode);
-        App.MainWindow?.ApplyTheme(mode);
+        App.MainWindow?.ApplyAppearance();
+    }
+
+    private void AppearanceSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        var appearance = (AppAppearance)AppearanceSelector.SelectedIndex;
+        if (_updating || !Enum.IsDefined(appearance)) return;
+
+        App.Settings.Update(value =>
+        {
+            value.Appearance = appearance;
+            value.UseRogAppearance = appearance == AppAppearance.Rog;
+        });
+        ThemeSelector.IsEnabled = appearance == AppAppearance.Windows;
+        App.MainWindow?.ApplyAppearance(adjustWindowSize: true);
     }
 
     private void StartupToggle_Toggled(object sender, RoutedEventArgs e)

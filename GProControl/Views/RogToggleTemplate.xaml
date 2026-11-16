@@ -1,0 +1,83 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="GamingToggleFillBrush" Color="#C7193F" />
+    <SolidColorBrush x:Key="GamingToggleHoverBrush" Color="#EC3153" />
+    <SolidColorBrush x:Key="GamingTogglePressedBrush" Color="#A51333" />
+    <SolidColorBrush x:Key="GamingToggleStrokeBrush" Color="#FA5773" />
+    <ControlTemplate x:Key="RogToggleTemplate" TargetType="ToggleSwitch">
+        <Grid x:Name="Root">
+            <VisualStateManager.VisualStateGroups>
+                <VisualStateGroup x:Name="CommonStates">
+                    <VisualState x:Name="Normal" />
+                    <VisualState x:Name="PointerOver">
+                        <VisualState.Setters>
+                            <Setter Target="OuterBorder.Fill" Value="#373339" />
+                            <Setter Target="SwitchKnobBounds.Fill" Value="{StaticResource GamingToggleHoverBrush}" />
+                        </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Pressed">
+                        <VisualState.Setters>
+                            <Setter Target="OuterBorder.Fill" Value="#242126" />
+                            <Setter Target="SwitchKnobBounds.Fill" Value="{StaticResource GamingTogglePressedBrush}" />
+                        </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Disabled">
+                        <VisualState.Setters><Setter Target="Root.Opacity" Value="0.44" /></VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+                <VisualStateGroup x:Name="ToggleStates">
+                    <VisualState x:Name="Off" />
+                    <VisualState x:Name="Dragging" />
+                    <VisualState x:Name="On">
+                        <VisualState.Setters>
+                            <Setter Target="SwitchKnobBounds.Opacity" Value="1" />
+                            <Setter Target="SwitchKnobOff.Fill" Value="#FFFFFF" />
+                        </VisualState.Setters>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetName="KnobTranslateTransform"
+                                             Storyboard.TargetProperty="X" To="24" Duration="0" />
+                        </Storyboard>
+                    </VisualState>
+                </VisualStateGroup>
+                <VisualStateGroup x:Name="ContentStates">
+                    <VisualState x:Name="OffContent">
+                        <VisualState.Setters><Setter Target="OffContentPresenter.Opacity" Value="1" /></VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="OnContent">
+                        <VisualState.Setters><Setter Target="OnContentPresenter.Opacity" Value="1" /></VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+            <ContentPresenter x:Name="HeaderContentPresenter" Content="{TemplateBinding Header}"
+                              ContentTemplate="{TemplateBinding HeaderTemplate}" Margin="0,0,0,5"
+                              Visibility="Collapsed" IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw" />
+            <Grid Grid.Row="1" MinHeight="32" HorizontalAlignment="Left">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <Grid x:Name="SwitchAreaGrid" Grid.ColumnSpan="2" Background="Transparent"
+                      Control.IsTemplateFocusTarget="True" />
+                <Rectangle x:Name="OuterBorder" Width="48" Height="22" RadiusX="2" RadiusY="2"
+                           Fill="#242328" Stroke="#635861" StrokeThickness="1" />
+                <Rectangle x:Name="SwitchKnobBounds" Width="48" Height="22" RadiusX="2" RadiusY="2"
+                           Fill="{StaticResource GamingToggleFillBrush}" Stroke="{StaticResource GamingToggleStrokeBrush}"
+                           StrokeThickness="1" Opacity="0" />
+                <Grid x:Name="SwitchKnob" Width="24" Height="22" HorizontalAlignment="Left">
+                    <Rectangle x:Name="SwitchKnobOff" Width="13" Height="12" RadiusX="1" RadiusY="1" Fill="#A6A0AA" />
+                    <Grid.RenderTransform><TranslateTransform x:Name="KnobTranslateTransform" /></Grid.RenderTransform>
+                </Grid>
+                <ContentPresenter x:Name="OffContentPresenter" Grid.Column="1" Margin="9,0,0,0"
+                                  Content="{TemplateBinding OffContent}" ContentTemplate="{TemplateBinding OffContentTemplate}"
+                                  Foreground="{TemplateBinding Foreground}" Opacity="0" VerticalAlignment="Center"
+                                  IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw" />
+                <ContentPresenter x:Name="OnContentPresenter" Grid.Column="1" Margin="9,0,0,0"
+                                  Content="{TemplateBinding OnContent}" ContentTemplate="{TemplateBinding OnContentTemplate}"
+                                  Foreground="{TemplateBinding Foreground}" Opacity="0" VerticalAlignment="Center"
+                                  IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw" />
+                <Thumb x:Name="SwitchThumb" Grid.ColumnSpan="2" AutomationProperties.AccessibilityView="Raw">
+                    <Thumb.Template><ControlTemplate TargetType="Thumb"><Rectangle Fill="Transparent" /></ControlTemplate></Thumb.Template>
+                </Thumb>
+            </Grid>
+        </Grid>
+    </ControlTemplate>
+</ResourceDictionary>

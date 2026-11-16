@@ -6,6 +6,13 @@ using Microsoft.UI.Xaml.Media;
 namespace GProControl.Views;
 public sealed partial class LightingPage : Page
 {
+    private void Workspace_LayoutModeChanged(object? sender, EventArgs args)
+    {
+        bool rog = Workspace.IsRogLayout;
+        RogKeyboardArt.Visibility = rog ? Visibility.Visible : Visibility.Collapsed;
+        ClassicKeyboardIcon.Visibility = rog ? Visibility.Collapsed : Visibility.Visible;
+    }
+
     private readonly B21HidClient _client = new();
     private KeyboardLightingState? _state;
     private bool _busy, _updating, _loaded, _approved;
@@ -15,6 +22,7 @@ public sealed partial class LightingPage : Page
     public LightingPage()
     {
         InitializeComponent();
+        RoutineNotice.ApplyVisibility(StatusInfoBar, routine: true);
         _updating = true; EffectSelector.ItemsSource = LightingEffectChoice.All;
         PresetList.ItemsSource = LightingPresetCatalog.All; _updating = false;
         AudioPaletteBox.ItemsSource=LightingPresetCatalog.AudioPalettes;
@@ -66,7 +74,8 @@ public sealed partial class LightingPage : Page
             Notice(_approved ? "已同步键盘灯效" : "键盘版本尚不支持",
                 App.AmbientLighting.ActiveEffect is not null ? "动态灯效正在运行，切换页面或转入后台后会继续。"
                 : "选择效果后点击应用。常规效果保存在键盘；光影与光音效果在软件运行期间生效。",
-                _approved ? InfoBarSeverity.Success : InfoBarSeverity.Warning);
+                _approved ? InfoBarSeverity.Success : InfoBarSeverity.Warning,
+                routine: _approved);
         }
         catch (Exception exception)
         {
@@ -374,8 +383,10 @@ public sealed partial class LightingPage : Page
         if (LightingProfile.FromState(state) is { } profile) value.LastLightingProfile = profile;
         if (WaveLightingProfile.FromState(state) is { } wave) value.LastWaveLighting = wave;
     });
-    private void Notice(string title, string message, InfoBarSeverity severity) {
+    private void Notice(string title, string message, InfoBarSeverity severity, bool routine = false) {
         if (!_loaded) return;
         StatusInfoBar.Title = title; StatusInfoBar.Message = message; StatusInfoBar.Severity = severity;
+        RoutineNotice.ApplyVisibility(StatusInfoBar, routine);
+        if (!routine) StatusInfoBar.IsOpen = true;
     }
 }

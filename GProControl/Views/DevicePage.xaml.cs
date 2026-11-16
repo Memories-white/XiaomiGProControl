@@ -7,6 +7,16 @@ namespace GProControl.Views;
 
 public sealed partial class DevicePage : Page
 {
+    private void Workspace_LayoutModeChanged(object? sender, EventArgs args)
+    {
+        bool rog = Workspace.IsRogLayout;
+        Grid.SetRow(DisplaySettingsPanel, rog ? 1 : 0);
+        Grid.SetColumn(DisplaySettingsPanel, rog ? 0 : 1);
+        DisplaySecondColumn.Width = rog ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        DisplayControls.ColumnSpacing = rog ? 0 : 18;
+        DisplayControls.RowSpacing = rog ? 14 : 0;
+    }
+
     private bool _updating;
     private bool _loaded;
     private bool _switchBusy;
@@ -69,6 +79,7 @@ public sealed partial class DevicePage : Page
         DeviceInfo.Title = verified ? "设备自检已通过" : "设备自检未通过或正在进行";
         DeviceInfo.Message = verified ? "设备开关已可使用。每次启动自动执行只读自检。"
             : "等待原厂服务并运行只读自检；失败后可点击重新自检。";
+        RoutineNotice.ApplyVisibility(DeviceInfo, routine: verified);
     }
 
     private async Task RefreshSwitchesAsync()
@@ -108,6 +119,8 @@ public sealed partial class DevicePage : Page
         DeviceInfo.Message = result.Verified
             ? "自检通过，开关状态已从设备同步；应用后将再次读回确认。"
             : result.Message;
+        RoutineNotice.ApplyVisibility(DeviceInfo, routine: result.Verified);
+        if (!result.Verified) DeviceInfo.IsOpen = true;
     }
 
     private async void DeviceSwitch_Toggled(object sender, RoutedEventArgs e)
