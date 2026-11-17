@@ -25,6 +25,7 @@ public sealed class RogPageLayout : Panel
 
     public Thickness Padding { get; set; }
     public double Spacing { get; set; } = 18;
+    public bool ResponsiveColumns { get; set; }
     internal bool IsRogLayout => _rog;
     public event EventHandler? LayoutModeChanged;
 
@@ -78,7 +79,7 @@ public sealed class RogPageLayout : Panel
     {
         var padding = _rog ? new Thickness(24, 24, 24, 28) : Padding;
         double width = Math.Max(0, availableWidth - padding.Left - padding.Right);
-        bool columns = _rog && width >= 650;
+        bool columns = (_rog || ResponsiveColumns) && width >= (ResponsiveColumns ? 680 : 650);
         double gap = _rog ? 14 : Spacing;
         double y = padding.Top;
         var content = Children.Where(child => child != _headerRule && child.Visibility == Visibility.Visible);
@@ -88,12 +89,12 @@ public sealed class RogPageLayout : Panel
 
         if (!columns)
         {
-            if (_rog) content = content.OrderBy(GetBand).ThenBy(GetLane);
+            if (_rog || ResponsiveColumns) content = content.OrderBy(GetBand).ThenBy(GetLane);
             y = LayoutLane(content, padding.Left, y, width, gap, measure);
         }
         else
         {
-            double primaryWidth = (width - gap) * 0.56;
+            double primaryWidth = (width - gap) * (ResponsiveColumns ? 0.5 : 0.56);
             foreach (var band in content.GroupBy(GetBand).OrderBy(group => group.Key))
             {
                 y = LayoutLane(band.Where(child => GetLane(child) == 0), padding.Left, y, width, gap, measure);

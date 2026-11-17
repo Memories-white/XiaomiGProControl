@@ -306,6 +306,7 @@ public sealed partial class MainWindow : Window
                 throw new InvalidOperationException("ROG dashboard and sidebar did not load.");
             RequireCenteredDashboard(page, "RogDashboard");
             RequireFittedDashboard(page, 1060, 684);
+            await RequireStableTelemetryBarAsync(page);
 
             NavigateTo("details", asSubpage: true);
             if (ContentFrame.Content is not DetailsPage || PageBackButton.Visibility != Visibility.Visible
@@ -330,6 +331,8 @@ public sealed partial class MainWindow : Window
                     && ElementCompositionPreview.GetElementVisual(icon).TryGetAnimationController("Scale") is null)
                     throw new InvalidOperationException($"The sidebar icon for {tag} did not animate.");
                 RequireRogWorkspace(tag);
+                if (ContentFrame.Content is PerformancePage performance)
+                    await RequirePerformanceLayoutAsync(performance);
             }
 
             var settingsWorkspace = (RogPageLayout)((Page)ContentFrame.Content).FindName("Workspace");
@@ -433,6 +436,113 @@ public sealed partial class MainWindow : Window
                 .Any(card => ReferenceEquals(card.Style, Application.Current.Resources["RogSectionStyle"])))
             throw new InvalidOperationException($"ROG layout did not load on {tag}.");
     }
+
+    private async Task RequirePerformanceLayoutAsync(PerformancePage page)
+    {
+        var workspace = (RogPageLayout)page.FindName("Workspace");
+        var modes = (Grid)page.FindName("ModeSelector");
+        var firstMode = (RadioButton)modes.Children[0];
+        var lastMode = (RadioButton)modes.Children[3];
+        var gpu = (Border)page.FindName("GpuOverclockCard");
+        var output = (Border)page.FindName("GraphicModeCard");
+        var screen = (Border)page.FindName("ScreenAccelerationCard");
+        var origin = new Windows.Foundation.Point();
+
+        var appearance = App.Settings.Current.Appearance;
+        var previouslyChecked = modes.Children.OfType<RadioButton>().FirstOrDefault(option => option.IsChecked == true);
+        try
+        {
+            firstMode.IsChecked = true;
+            lastMode.IsChecked = true;
+            if (firstMode.IsChecked == true || GetModeSelection(lastMode).Visibility != Visibility.Visible)
+                throw new InvalidOperationException("The performance mode buttons did not show a single selected option.");
+
+            foreach (var theme in new[] { AppAppearance.Rog, AppAppearance.Legion, AppAppearance.Windows })
+            {
+                App.Settings.Current.Appearance = theme;
+                ApplyAppearance();
+                var selection = GetModeSelection(lastMode);
+                var outline = (Border)selection.Children[1];
+                var color = ((SolidColorBrush)outline.BorderBrush).Color;
+                if (selection.Visibility != Visibility.Visible || outline.CornerRadius.TopLeft != (theme == AppAppearance.Rog ? 2 : 6)
+                    || (theme == AppAppearance.Rog && color != Color.FromArgb(255, 250, 87, 115))
+                    || (theme == AppAppearance.Legion && color != Color.FromArgb(255, 91, 209, 246))
+                    || (theme == AppAppearance.Windows && lastMode.ReadLocalValue(Control.BorderBrushProperty) != DependencyProperty.UnsetValue))
+                    throw new InvalidOperationException($"The selected performance mode did not follow {theme}.");
+
+                var dialog = page.CreateGpuOverclockDialog();
+                if (dialog.DefaultButton != ContentDialogButton.Close ||
+                    (theme != AppAppearance.Windows && (!ReferenceEquals(dialog.Background, gpu.Background)
+                        || dialog.CornerRadius.TopLeft != gpu.CornerRadius.TopLeft
+                        || !ReferenceEquals(dialog.PrimaryButtonStyle, Application.Current.Resources[
+                            theme == AppAppearance.Rog ? "RogSectionButtonStyle" : "LegionSectionButtonStyle"]))))
+                    throw new InvalidOperationException($"The GPU overclock confirmation did not follow {theme}.");
+                var shown = dialog.ShowAsync();
+                await Task.Delay(180);
+                dialog.Hide();
+                await shown;
+            }
+        }
+        finally
+        {
+            lastMode.IsChecked = false;
+            if (previouslyChecked is not null) previouslyChecked.IsChecked = true;
+            App.Settings.Current.Appearance = appearance;
+            ApplyAppearance();
+        }
+
+        var toggle = (ToggleSwitch)page.FindName("GpuOverclockToggle");
+        var progress = (ProgressRing)page.FindName("GpuOverclockProgress");
+        var completion = new TaskCompletionSource<GProControl.Models.HardwareActionResult>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var request = page.RequestGpuOverclockAsync(true, () => Task.FromResult(true), _ => completion.Task);
+        var heldDuringReadback = toggle.IsOn && !toggle.IsEnabled && progress.IsActive;
+        completion.SetResult(new GProControl.Models.HardwareActionResult(true, false, "Synthetic readback.", 0));
+        await request;
+        if (!heldDuringReadback || toggle.IsOn || progress.IsActive)
+            throw new InvalidOperationException("The GPU overclock switch did not hold the target until readback or restore the reported state.");
+
+        await page.RequestGpuOverclockAsync(true, () => Task.FromResult(true),
+            _ => Task.FromResult(new GProControl.Models.HardwareActionResult(true, false, "Synthetic timeout.")));
+        await page.RefreshGpuOverclockAsync(() => Task.FromResult(
+            new GProControl.Models.HardwareActionResult(false, true, "Synthetic stale state.", 0)));
+        if (!toggle.IsOn || toggle.IsEnabled || App.PendingGpuOverclockTarget != true)
+            throw new InvalidOperationException("An old GPU overclock state ended the pending enable request.");
+        await page.RefreshGpuOverclockAsync(() => Task.FromResult(
+            new GProControl.Models.HardwareActionResult(false, true, "Synthetic confirmed state.", 1)));
+        if (!toggle.IsOn || App.PendingGpuOverclockTarget is not null)
+            throw new InvalidOperationException("A confirmed GPU overclock target did not clear the pending request.");
+
+        if (workspace.ActualWidth >= 728)
+        {
+            var left = gpu.TransformToVisual(workspace).TransformPoint(origin);
+            var right = output.TransformToVisual(workspace).TransformPoint(origin);
+            var secondRow = screen.TransformToVisual(workspace).TransformPoint(origin);
+            if (Grid.GetRow(lastMode) != 0 || Math.Abs(left.Y - right.Y) > 1
+                || right.X <= left.X || secondRow.Y <= left.Y)
+                throw new InvalidOperationException("Performance cards did not form two rows in the wide window.");
+        }
+
+        var size = AppWindow.Size;
+        try
+        {
+            AppWindow.Resize(new Windows.Graphics.SizeInt32(580, 520));
+            await Task.Delay(140);
+            var top = gpu.TransformToVisual(workspace).TransformPoint(origin);
+            var bottom = output.TransformToVisual(workspace).TransformPoint(origin);
+            if (Grid.GetRow(lastMode) != 1 || Grid.GetColumnSpan(lastMode) != 2
+                || Math.Abs(top.X - bottom.X) > 1 || bottom.Y + 1 < top.Y + gpu.ActualHeight)
+                throw new InvalidOperationException("Performance cards overlapped or mode buttons failed to wrap in the narrow window.");
+        }
+        finally
+        {
+            AppWindow.Resize(size);
+        }
+        await Task.Delay(140);
+    }
+
+    private static Grid GetModeSelection(RadioButton option) =>
+        ((Grid)VisualTreeHelper.GetChild(option, 0)).Children.OfType<Grid>().Single();
 
     private static async Task RequireDetailsLayoutAsync(DetailsPage page)
     {
@@ -649,6 +759,45 @@ public sealed partial class MainWindow : Window
         AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(x, y, width, height));
     }
 
+    private static async Task RequireStableTelemetryBarAsync(DashboardPage page)
+    {
+        var monitor = (StackPanel)page.FindName("RogMonitor");
+        var bar = new TelemetryProgressBar
+        {
+            Style = (Style)page.Resources["TelemetryProgressBarStyle"],
+            Width = 100,
+            Height = 4,
+            Value = 82,
+            Opacity = 0,
+            IsHitTestVisible = false
+        };
+        monitor.Children.Add(bar);
+        try
+        {
+            await Task.Delay(40);
+            var layout = (Grid)VisualTreeHelper.GetChild(bar, 0);
+            var indicator = (Microsoft.UI.Xaml.Shapes.Rectangle)layout.Children[1];
+            foreach (var value in new[] { 13d, 0d, 56d })
+            {
+                var previous = indicator.ActualWidth;
+                bar.Value = value;
+                await Task.Delay(55);
+                var intermediate = indicator.ActualWidth;
+                var origin = indicator.TransformToVisual(layout).TransformPoint(new Windows.Foundation.Point());
+                if (Math.Abs(origin.X) > 0.5 || (AnimationsEnabled()
+                    && (intermediate <= Math.Min(previous, value) || intermediate >= Math.Max(previous, value))))
+                    throw new InvalidOperationException($"Telemetry fill did not animate from the left edge at {value}% (width {intermediate}).");
+                await Task.Delay(160);
+                if (Math.Abs(indicator.ActualWidth - value) > 1)
+                    throw new InvalidOperationException($"Telemetry fill did not settle at {value}%.");
+            }
+        }
+        finally
+        {
+            monitor.Children.Remove(bar);
+        }
+    }
+
     private void RequireFittedDashboard(DashboardPage page, int contentWidth, int windowHeight)
     {
         var scale = WindowScale;
@@ -737,7 +886,7 @@ public sealed partial class MainWindow : Window
         _sidebarTransition.Begin();
     }
 
-    private static bool AnimationsEnabled()
+    internal static bool AnimationsEnabled()
     {
         try { return new Windows.UI.ViewManagement.UISettings().AnimationsEnabled; }
         catch (COMException) { return false; }

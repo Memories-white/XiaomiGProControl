@@ -77,6 +77,25 @@ The setter payload keys recovered from the handler include `mode`, `enable` and 
 
 Performance-mode notifications are not isolated UI state. The native result adapter also checks CPU/GPU overclocking support and can restore overclocking defaults when leaving mode `4`. A replacement must preserve these side effects or explicitly warn when it cannot.
 
+### GPU 加速引擎 (GPU overclocking)
+
+The installed B21 front end exposes this switch in 狂暴 mode. It requires AC power
+to enable the factory preset and asks for confirmation first. Its bridge sends
+`get_gpu_over_clock_status` and `set_gpu_over_clock_status`.
+
+In the original `MiDeviceServiceEntry.dll`, the GameBox dispatcher at
+`0x180cbbc20` routes business type 20 to the driver-backed setter at
+`0x180cad9b0` and type 21 to the getter at `0x180cad630`. The GPU setter
+reads boolean field 2 of `ProtoOC`. Responses distinguish a setter result
+(field 1 = 2, field 2 = requested state, field 3 = success) from a getter
+result (field 1 = 3, field 3 = current state). The serializer omits false
+flags. The separate firmware `GPOC` flag in ACPI does not verify a driver change.
+
+The replacement checks the original model and version, requires a readable
+state before any write, then confirms the setter response and reads the
+state again. It asks the user to turn GPU acceleration off before leaving
+狂暴 mode. These protocol fields were checked statically and in offline tests.
+
 ## WMI hardware layer
 
 The bridge contains RTTI and virtual tables for the following `wmi::bitland_sync_operation` classes:

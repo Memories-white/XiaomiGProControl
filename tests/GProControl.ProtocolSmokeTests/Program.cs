@@ -45,6 +45,24 @@ Require(encodedBusiness.BusinessType == 30, "Encoded GameBox business type misma
 Require(encodedBusiness.Data == "1", "Encoded GameBox data mismatch.");
 Require(encodedBusiness.Status == 0, "Encoded GameBox status mismatch.");
 
+Require(Convert.ToHexString(MiGpuOverclockCodec.WriteGet()) == "0108151200", "GPU OC query bytes mismatch.");
+Require(Convert.ToHexString(MiGpuOverclockCodec.WriteSet(true)) == "01081412021001", "GPU OC enable bytes mismatch.");
+Require(Convert.ToHexString(MiGpuOverclockCodec.WriteSet(false)) == "01081412021000", "GPU OC disable bytes mismatch.");
+byte[] GpuFrame(uint type, byte[] data) =>
+    MiServiceProtocolWriter.WriteCommand("gpu-test", MiServiceProtocolWriter.WriteGameBox(type, data));
+Require(MiGpuOverclockCodec.ReadGetResponse(GpuFrame(21, [0x08, 3, 0x18, 1])) == true,
+    "GPU OC on-state was not read.");
+Require(MiGpuOverclockCodec.ReadGetResponse(GpuFrame(21, [0x08, 3])) == false,
+    "An omitted GPU OC boolean must decode as off.");
+Require(MiGpuOverclockCodec.ReadSetResponse(GpuFrame(20, [0x08, 2, 0x18, 1])) == (false, true),
+    "GPU OC disable acknowledgement was not read.");
+Require(MiGpuOverclockCodec.ReadSetResponse(GpuFrame(20, [0x08, 2, 0x10, 1])) == (true, false),
+    "A failed GPU OC enable request must remain unconfirmed.");
+Require(MiGpuOverclockCodec.ReadGetResponse(GpuFrame(20, [0x08, 3])) is null
+    && MiGpuOverclockCodec.ReadGetResponse(GpuFrame(21, [0x08, 3, 0x18])) is null
+    && MiGpuOverclockCodec.ReadGetResponse(GpuFrame(21, [])) is null,
+    "Unrelated, truncated, or empty GPU OC responses must be rejected.");
+
 var encodedFrame = MiServiceProtocolWriter.WriteCommand("GProControl-test", encodedPerformance);
 Require(MiServiceProtocolReader.TryReadEnvelope(
     encodedFrame, out var encodedEnvelope, out var encodedEnvelopeError), encodedEnvelopeError);

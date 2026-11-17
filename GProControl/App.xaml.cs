@@ -14,6 +14,7 @@ public partial class App : Application
     public static string StartupRestoreMessage { get; private set; } = "尚未执行启动恢复。";
     public static string LightingRestoreMessage { get; private set; } = "尚未恢复灯效。";
     internal static (int TargetMode, bool Confirmed)? PendingGraphicModeChange { get; set; }
+    internal static bool? PendingGpuOverclockTarget { get; set; }
     public static bool IsPackageSmoke { get; } = Environment.GetCommandLineArgs().Contains("--package-smoke");
     private static readonly TaskCompletionSource StartupPerformanceReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     internal static Task StartupPerformanceRestore => StartupPerformanceReady.Task;

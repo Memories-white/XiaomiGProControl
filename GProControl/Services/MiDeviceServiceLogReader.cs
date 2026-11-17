@@ -26,6 +26,8 @@ internal sealed class MiDeviceServiceLogReader
     // the resulting state to clients as NotifyMsg31 (1 = on, 0 = off).
     private const string OverDriverAppliedMarker = "kWmiSetOverDriverStatus";
     private const string OverDriverStatePrefix = "NotifyMsg31, data:";
+    private const string GpuOverclockQueryPrefix = "gpu_over_clock_manger.cpp 52: GetGPUOC() Result:";
+    private const string GpuOverclockWritePrefix = "gpu_over_clock_manger.cpp 34: SetGPUOC Result:";
     // Every proxied WMI operation is logged with its 32-byte InData, which proves
     // that command type 3 reached the executor even when no result is returned.
     private const string WmiExecuteMarker = "HandleExecBusiness";
@@ -44,6 +46,11 @@ internal sealed class MiDeviceServiceLogReader
     private readonly string _logPath;
     private long _cursor = -1;
     private string _carry = string.Empty;
+    private long _gpuOverclockSequence;
+    private (long Sequence, DateTime Timestamp, int Value) _lastGpuOverclockRead;
+    private (long Sequence, DateTime Timestamp, int Value) _lastGpuOverclockWrite;
+
+    internal readonly record struct GpuOverclockLogCursor(long Sequence, DateTime Timestamp);
 
     public MiDeviceServiceLogReader(string? logPath = null) =>
         _logPath = string.IsNullOrWhiteSpace(logPath) ? DefaultLogPath : logPath;
@@ -216,6 +223,35 @@ internal sealed class MiDeviceServiceLogReader
         TimeSpan timeout,
         CancellationToken cancellationToken) =>
         WaitAsync(() => TryReadRecentGraphicMode(notBefore), timeout, cancellationToken);
+
+    public GpuOverclockLogCursor CaptureGpuOverclockLogCursor()
+    {
+        lock (_gate)
+        {
+            Pump();
+            var now = DateTime.Now;
+            // The vendor log records milliseconds, so use the append sequence to distinguish
+            // an existing record from a new result written within the same millisecond.
+            return new GpuOverclockLogCursor(_gpuOverclockSequence,
+                now.AddTicks(-(now.Ticks % TimeSpan.TicksPerMillisecond)));
+        }
+    }
+
+    public async Task<bool?> WaitForGpuOverclockResultAsync(GpuOverclockLogCursor cursor, bool isWrite,
+        TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        var value = await WaitAsync(() =>
+        {
+            lock (_gate)
+            {
+                Pump();
+                var entry = isWrite ? _lastGpuOverclockWrite : _lastGpuOverclockRead;
+                return entry.Sequence > cursor.Sequence && entry.Timestamp >= cursor.Timestamp
+                    && entry.Timestamp <= DateTime.Now ? entry.Value : null;
+            }
+        }, timeout, cancellationToken).ConfigureAwait(false);
+        return value is int result ? result == 1 : null;
+    }
 
     /// <summary>
     /// Reports whether the service executed a proxied WMI operation whose 32-byte
@@ -438,6 +474,7 @@ internal sealed class MiDeviceServiceLogReader
                 }
 
                 _recent.Enqueue(line);
+                RecordGpuOverclockResult(line);
                 while (_recent.Count > RecentLineCapacity)
                 {
                     _recent.Dequeue();
@@ -450,6 +487,22 @@ internal sealed class MiDeviceServiceLogReader
         catch (UnauthorizedAccessException)
         {
         }
+    }
+
+    private void RecordGpuOverclockResult(string line)
+    {
+        var marker = line.IndexOf(GpuOverclockQueryPrefix, StringComparison.Ordinal);
+        bool isWrite = marker < 0;
+        var prefix = isWrite ? GpuOverclockWritePrefix : GpuOverclockQueryPrefix;
+        if (isWrite) marker = line.IndexOf(prefix, StringComparison.Ordinal);
+        if (marker < 0 || !TryReadTimestamp(line, out var timestamp)) return;
+
+        var suffix = line.AsSpan(marker + prefix.Length).Trim();
+        if (suffix.Length != 1 || suffix[0] is not ('0' or '1')) return;
+
+        var entry = (++_gpuOverclockSequence, timestamp, suffix[0] - '0');
+        if (isWrite) _lastGpuOverclockWrite = entry;
+        else _lastGpuOverclockRead = entry;
     }
 
     private int? ScanRecent(string prefix, DateTime notBefore, Func<int, bool> isValid, string? alternatePrefix = null)

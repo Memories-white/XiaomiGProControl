@@ -1,4 +1,5 @@
 using Microsoft.Win32;
+using System.Runtime.InteropServices;
 using GProControl.Models;
 using GProControl.Protocol;
 
@@ -12,6 +13,8 @@ public sealed class XiaomiHardwareControlService : IHardwareControlService
     private const uint ScreenAccelerationBusinessType = 30;
     private const ulong SetPerformanceOperation = 1;
     private const ulong GetPerformanceOperation = 0;
+    private static readonly TimeSpan GpuOverclockResponseWait = TimeSpan.FromMilliseconds(350);
+    private static readonly TimeSpan GpuOverclockLogWait = TimeSpan.FromSeconds(2);
     // Values consumed by MiDeviceService operation 1, not the public
     // XiaomiGCommandCenter bridge enum.
     private static readonly int[] SupportedPerformanceValues = [0, 1, 2, 3];
@@ -419,6 +422,119 @@ public sealed class XiaomiHardwareControlService : IHardwareControlService
             _commandLock.Release();
         }
     }
+
+    public Task<HardwareActionResult> GetGpuOverclockAsync(CancellationToken cancellationToken = default) =>
+        RunGpuOverclockAsync(null, cancellationToken);
+
+    public Task<HardwareActionResult> SetGpuOverclockAsync(bool enabled, CancellationToken cancellationToken = default) =>
+        RunGpuOverclockAsync(enabled, cancellationToken);
+
+    private async Task<HardwareActionResult> RunGpuOverclockAsync(bool? target, CancellationToken cancellationToken)
+    {
+        if (!State.CanArmWrites)
+            return HardwareActionResult.Rejected("原厂服务未通过安全检查，无法读取 GPU 加速状态。");
+
+        await _commandLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        bool submitted = false;
+        try
+        {
+            if (target is bool enabled)
+            {
+                var guard = ValidateWriteGuard();
+                if (guard is not null) return guard;
+                var before = await ReadGpuOverclockUntilAsync(null, 2, cancellationToken).ConfigureAwait(false);
+                if (before is null)
+                    return HardwareActionResult.Rejected("原厂服务未返回 GPU 加速状态，已取消写入。");
+                if (before == enabled)
+                    return new HardwareActionResult(false, true, "GPU 加速已经是所选状态。", enabled ? 1 : 0);
+                if (enabled && await QueryPerformanceModeAsync(cancellationToken).ConfigureAwait(false) != 4)
+                    return HardwareActionResult.Rejected("请先切换到狂暴模式，再开启 GPU 加速。");
+                if (enabled && (!GetSystemPowerStatus(out var power) || power.AcLineStatus != 1))
+                    return HardwareActionResult.Rejected("开启 GPU 加速前请连接电源。");
+
+                submitted = true;
+                var writeCursor = _logReader.CaptureGpuOverclockLogCursor();
+                var response = await _client.SendAsync(MiGpuOverclockCodec.WriteSet(enabled),
+                    cancellationToken, GpuOverclockResponseWait,
+                    frame => MiGpuOverclockCodec.ReadSetResponse(frame) is not null).ConfigureAwait(false);
+                var reply = MiGpuOverclockCodec.ReadSetResponse(response);
+                bool? acknowledged = reply is { } ack
+                    ? ack.Success && ack.Requested == enabled
+                    : await _logReader.WaitForGpuOverclockResultAsync(
+                        writeCursor, isWrite: true, GpuOverclockLogWait, cancellationToken).ConfigureAwait(false);
+                if (acknowledged == false)
+                {
+                    var unchanged = await ReadGpuOverclockUntilAsync(null, 2, cancellationToken).ConfigureAwait(false);
+                    return new HardwareActionResult(true, false, "原厂服务拒绝切换 GPU 加速。",
+                        unchanged is bool state ? (state ? 1 : 0) : null);
+                }
+
+                var applied = await ReadGpuOverclockUntilAsync(enabled, 3, cancellationToken).ConfigureAwait(false);
+                return applied == enabled
+                    ? new HardwareActionResult(true, true, DescribeGpuOverclock(enabled), enabled ? 1 : 0)
+                    : new HardwareActionResult(true, false, "原厂服务尚未确认 GPU 加速的目标状态。");
+            }
+
+            var current = await ReadGpuOverclockUntilAsync(null, 2, cancellationToken).ConfigureAwait(false);
+            return current is bool on
+                ? new HardwareActionResult(false, true, DescribeGpuOverclock(on), on ? 1 : 0)
+                : HardwareActionResult.Rejected("原厂服务未返回可识别的 GPU 加速状态。");
+        }
+        catch (Exception ex) when (ex is IOException or TimeoutException or UnauthorizedAccessException)
+        {
+            return new HardwareActionResult(submitted, false, $"原厂 GPU 加速通信失败：{ex.Message}");
+        }
+        finally
+        {
+            _commandLock.Release();
+        }
+    }
+
+    private async Task<bool?> ReadGpuOverclockUntilAsync(bool? expected, int attempts, CancellationToken cancellationToken)
+    {
+        for (var attempt = 0; attempt < attempts; attempt++)
+        {
+            if (attempt > 0) await Task.Delay(300, cancellationToken).ConfigureAwait(false);
+            var result = await QueryGpuOverclockAsync(cancellationToken).ConfigureAwait(false);
+            if (result.HasValue && (expected is null || result == expected)) return result;
+        }
+        return null;
+    }
+
+    private async Task<bool?> QueryGpuOverclockAsync(CancellationToken cancellationToken)
+    {
+        var readCursor = _logReader.CaptureGpuOverclockLogCursor();
+        var response = await _client.SendAsync(
+            MiGpuOverclockCodec.WriteGet(), cancellationToken, GpuOverclockResponseWait,
+            frame => MiGpuOverclockCodec.ReadGetResponse(frame) is not null).ConfigureAwait(false);
+        var fromPipe = MiGpuOverclockCodec.ReadGetResponse(response);
+        if (fromPipe.HasValue) return fromPipe;
+
+        var fromLog = await _logReader.WaitForGpuOverclockResultAsync(
+            readCursor, isWrite: false, GpuOverclockLogWait, cancellationToken).ConfigureAwait(false);
+        StartupDiagnostics.Write(fromLog.HasValue
+            ? $"GPU overclock readback from MiDeviceService log: enabled={fromLog.Value}."
+            : "GPU overclock readback timed out on both the pipe and MiDeviceService log.");
+        return fromLog;
+    }
+
+    private static string DescribeGpuOverclock(bool enabled) =>
+        enabled ? "原厂服务报告 GPU 加速已开启。" : "原厂服务报告 GPU 加速已关闭。";
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct SystemPowerStatus
+    {
+        public byte AcLineStatus;
+        public byte BatteryFlag;
+        public byte BatteryLifePercent;
+        public byte SystemStatusFlag;
+        public uint BatteryLifeTime;
+        public uint BatteryFullLifeTime;
+    }
+
+    [DllImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetSystemPowerStatus(out SystemPowerStatus status);
 
     public Task<HardwareActionResult> GetScreenAccelerationStatusAsync(
         CancellationToken cancellationToken = default)

@@ -62,7 +62,8 @@ internal sealed class MiDeviceServiceClient
     public async Task<byte[]?> SendAsync(
         ReadOnlyMemory<byte> payload,
         CancellationToken cancellationToken,
-        TimeSpan? responseWait = null)
+        TimeSpan? responseWait = null,
+        Func<byte[], bool>? acceptResponse = null)
     {
         var wait = responseWait ?? DefaultResponseWait;
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -114,7 +115,8 @@ internal sealed class MiDeviceServiceClient
                     continue;
                 }
 
-                return frame;
+                if (acceptResponse is null || acceptResponse(frame))
+                    return frame;
             }
 
             return null;

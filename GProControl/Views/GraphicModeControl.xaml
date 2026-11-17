@@ -3,11 +3,12 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <StackPanel Spacing="12">
-        <Grid>
-            <TextBlock Text="显卡输出模式" Style="{StaticResource SectionTitleStyle}" />
-            <Button x:Name="RefreshButton" Content="刷新" HorizontalAlignment="Right" Click="Refresh_Click" />
+        <Grid ColumnSpacing="12">
+            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <TextBlock Text="显卡输出模式" Style="{StaticResource SectionTitleStyle}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <Button Grid.Column="1" x:Name="RefreshButton" Content="刷新" Style="{StaticResource SectionButtonStyle}" Click="Refresh_Click" />
         </Grid>
-        <TextBlock x:Name="ModeText" Text="正在读取…" FontWeight="SemiBold" />
+        <TextBlock x:Name="ModeText" Text="正在读取…" FontWeight="SemiBold" TextWrapping="Wrap" />
         <TextBlock x:Name="StatusText" Text="正在自动检查设备控制…" Opacity="0.65" FontSize="12" TextWrapping="Wrap" />
         <Grid ColumnSpacing="10">
             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>

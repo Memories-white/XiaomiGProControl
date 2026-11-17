@@ -22,6 +22,8 @@ public interface IHardwareControlService
     Task<HardwareActionResult> GetPerformanceModeAsync(CancellationToken cancellationToken = default);
     Task<HardwareActionResult> GetWlanAccelerationStatusAsync(CancellationToken cancellationToken = default);
     Task<HardwareActionResult> GetScreenAccelerationStatusAsync(CancellationToken cancellationToken = default);
+    Task<HardwareActionResult> GetGpuOverclockAsync(CancellationToken cancellationToken = default);
+    Task<HardwareActionResult> SetGpuOverclockAsync(bool enabled, CancellationToken cancellationToken = default);
     Task<ThermalFanReadResult> GetThermalFanSnapshotAsync(CancellationToken cancellationToken = default);
     Task<HardwareActionResult> ProbeWmiTransportAsync(CancellationToken cancellationToken = default);
     Task<HardwareActionResult> SetPerformanceModeAsync(int setterValue, CancellationToken cancellationToken = default);

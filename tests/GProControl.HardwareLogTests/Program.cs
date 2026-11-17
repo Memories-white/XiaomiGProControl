@@ -62,6 +62,24 @@ try
     Require(reader.TryReadRecentGraphicMode(t0.AddSeconds(7)) is null,
         "stale graphic mode must not confirm a fresh command");
 
+    var gpuTime = t0.AddSeconds(10);
+    Append(path, Line(gpuTime, "gpu_over_clock_manger.cpp 52: GetGPUOC() Result:0"));
+    var gpuCursor = reader.CaptureGpuOverclockLogCursor() with { Timestamp = gpuTime };
+    Require(await reader.WaitForGpuOverclockResultAsync(gpuCursor, false, TimeSpan.Zero, CancellationToken.None) is null,
+        "a GPU OC state already present when the command was sent must be ignored");
+    Append(path, Line(gpuTime, "gpu_over_clock_manger.cpp 34: SetGPUOC Result:1"));
+    Require(await reader.WaitForGpuOverclockResultAsync(gpuCursor, true, TimeSpan.Zero, CancellationToken.None) == true
+        && await reader.WaitForGpuOverclockResultAsync(gpuCursor, false, TimeSpan.Zero, CancellationToken.None) is null,
+        "a write acknowledgement must be accepted in the same millisecond without being mistaken for a state");
+    Append(path, Line(gpuTime, "gpu_over_clock_manger.cpp 52: GetGPUOC() Result:1"));
+    Append(path, Line(gpuTime, "gpu_over_clock_manger.cpp 52: GetGPUOC() Result:10"));
+    Require(await reader.WaitForGpuOverclockResultAsync(gpuCursor, false, TimeSpan.Zero, CancellationToken.None) == true,
+        "fresh GPU OC on-state in the same millisecond must be accepted and malformed states ignored");
+    var disableCursor = reader.CaptureGpuOverclockLogCursor() with { Timestamp = gpuTime };
+    Append(path, Line(gpuTime, "gpu_over_clock_manger.cpp 52: GetGPUOC() Result:0"));
+    Require(await reader.WaitForGpuOverclockResultAsync(disableCursor, false, TimeSpan.Zero, CancellationToken.None) == false,
+        "a subsequent GPU OC request must accept only its own fresh disabled state");
+
     // Screen acceleration reads the applied state from the NotifyMsg31 record that
     // follows kWmiSetOverDriverStatus.
     Append(path, Line(t0.AddSeconds(6), "WildEngineManager.cpp 313: [WildEngine] WmiIndicate, kWmiSetOverDriverStatus"));
